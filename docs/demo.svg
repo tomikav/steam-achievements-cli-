@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="330" viewBox="0 0 820 330">
+  <defs>
+    <style>
+      .mono { font-family: Consolas, 'JetBrains Mono', Menlo, monospace; font-size: 14px; }
+      .hdr  { fill: #56b6c2; font-weight: bold; }
+      .dim  { fill: #7f8794; }
+      .name { fill: #e6e6e6; }
+      .gold { fill: #e5c07b; }
+      .grn  { fill: #98c379; }
+      .purp { fill: #c678dd; }
+      .row  { opacity: 0; }
+    </style>
+  </defs>
+
+  <!-- terminal window -->
+  <rect width="820" height="330" rx="12" fill="#10141b"/>
+  <rect x="1" y="1" width="818" height="328" rx="11" fill="none" stroke="#2c323c" stroke-width="2"/>
+  <circle cx="26" cy="24" r="6" fill="#e06c75"/>
+  <circle cx="46" cy="24" r="6" fill="#e5c07b"/>
+  <circle cx="66" cy="24" r="6" fill="#98c379"/>
+  <rect x="90" y="16" width="200" height="16" rx="8" fill="#1c212b"/>
+  <text x="100" y="28" class="mono dim" font-size="12">steam list — zsh</text>
+
+  <g class="row"><text x="24" y="62" class="mono"><tspan class="grn">$</tspan><tspan class="name"> steam</tspan></text>
+    <animate attributeName="opacity" from="0" to="1" begin="0.4s" dur="0.3s" fill="freeze"/></g>
+
+  <g class="row"><text x="24" y="90" class="mono hdr">GAME                       PROGRESS           COMPLETE  ACHIEVED</text>
+    <animate attributeName="opacity" from="0" to="1" begin="0.9s" dur="0.3s" fill="freeze"/></g>
+
+  <g class="row"><text x="24" y="116" class="mono"><tspan class="gold">🥇</tspan><tspan class="name"> Bardcore Rhythm Saga   </tspan><tspan class="grn">████████████████</tspan><tspan class="grn"> 100.0% 👑</tspan><tspan class="dim">  96/96</tspan></text>
+    <animate attributeName="opacity" from="0" to="1" begin="1.3s" dur="0.3s" fill="freeze"/></g>
+
+  <g class="row"><text x="24" y="142" class="mono"><tspan fill="#b0b7c3">🥈</tspan><tspan class="name"> Neon Overdrive         </tspan><tspan class="grn">████████████████</tspan><tspan class="grn"> 100.0% 👑</tspan><tspan class="dim">  62/62</tspan></text>
+    <animate attributeName="opacity" from="0" to="1" begin="1.7s" dur="0.3s" fill="freeze"/></g>
+
+  <g class="row"><text x="24" y="168" class="mono"><tspan fill="#7f8794">🥉</tspan><tspan class="name"> Void Cartographer      </tspan><tspan class="grn">███████████████</tspan><tspan class="dim">░  91.7%</tspan><tspan class="dim">  55/60</tspan></text>
+    <animate attributeName="opacity" from="0" to="1" begin="2.1s" dur="0.3s" fill="freeze"/></g>
+
+  <g class="row"><text x="24" y="194" class="mono"><tspan class="dim"> 4.</tspan><tspan class="name"> Pixel Farmer Deluxe    </tspan><tspan class="grn">███████████████</tspan><tspan class="dim">░  91.4%</tspan><tspan class="dim">  32/35</tspan></text>
+    <animate attributeName="opacity" from="0" to="1" begin="2.5s" dur="0.3s" fill="freeze"/></g>
+
+  <g class="row"><text x="24" y="220" class="mono"><tspan class="dim"> 5.</tspan><tspan class="name"> Deep Sea Diplomacy     </tspan><tspan class="grn">██████████████</tspan><tspan class="gold">█░  87.5%</tspan><tspan class="dim">  21/24</tspan></text>
+    <animate attributeName="opacity" from="0" to="1" begin="2.9s" dur="0.3s" fill="freeze"/></g>
+
+  <g class="row"><text x="24" y="246" class="mono dim">      … 10 more rows …</text>
+    <animate attributeName="opacity" from="0" to="1" begin="3.3s" dur="0.3s" fill="freeze"/></g>
+
+  <g class="row"><text x="24" y="278" class="mono"><tspan class="grn">✔</tspan><tspan class="dim"> 15 of 22 games with ≥ 50% achievements · 24h cache · 8 workers</tspan></text>
+    <animate attributeName="opacity" from="0" to="1" begin="3.7s" dur="0.3s" fill="freeze"/></g>
+
+  <g class="row"><text x="24" y="306" class="mono"><tspan class="grn">$</tspan><tspan class="name"> </tspan><tspan fill="#e6e6e6">▍</tspan>
+    <animate attributeName="opacity" values="1;1;0;1;1" keyTimes="0;0.4;0.5;0.6;1" dur="1.6s" repeatCount="indefinite"/></text>
+    <animate attributeName="opacity" from="0" to="1" begin="4.1s" dur="0.3s" fill="freeze"/></g>
+</svg>

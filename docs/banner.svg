@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="230" viewBox="0 0 800 230">
+  <defs>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e06c75">
+        <animate attributeName="stop-color" values="#e06c75;#e5c07b;#98c379;#56b6c2;#61afef;#c678dd;#e06c75" dur="8s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="50%" stop-color="#56b6c2">
+        <animate attributeName="stop-color" values="#56b6c2;#e06c75;#e5c07b;#98c379;#56b6c2;#61afef;#56b6c2" dur="8s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#c678dd">
+        <animate attributeName="stop-color" values="#c678dd;#e06c75;#e5c07b;#98c379;#56b6c2;#61afef;#c678dd" dur="8s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="230" rx="16" fill="#10141b"/>
+  <rect x="1" y="1" width="798" height="228" rx="15" fill="none" stroke="#2c323c" stroke-width="2"/>
+  <text x="400" y="120" font-family="'Segoe UI', Arial, sans-serif" font-size="72" font-weight="800" text-anchor="middle" fill="url(#glow)" letter-spacing="6">STEAM</text>
+  <text x="400" y="160" font-family="'Segoe UI', Arial, sans-serif" font-size="30" font-weight="600" text-anchor="middle" fill="#98c379" letter-spacing="3">ACHIEVEMENTS</text>
+  <text x="400" y="200" font-family="'Segoe UI', Arial, sans-serif" font-size="15" font-style="italic" text-anchor="middle" fill="#7f8794">flex your trophy cabinet — straight from the terminal</text>
+  <text x="26" y="40" font-size="20" fill="#e5c07b">🏆</text>
+  <text x="754" y="40" font-size="20" fill="#e5c07b">👑</text>
+</svg>
