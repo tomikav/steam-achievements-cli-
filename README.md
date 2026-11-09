@@ -23,13 +23,13 @@ achievements unlocked, ranked and color-coded:
 ```text
 $ steam
 
-       GAME                                 PROGRESS               COMPLETE  ACHIEVED  PLAYTIME   LAST PLAYED
-  1.   Bardcore Rhythm Saga                 ██████████████████████  100.0%      96/96    853.3 h    2025-01-18
-  2.   Neon Overdrive                       ██████████████████████  100.0%      62/62    686.7 h    2025-01-22
-  3.   Void Cartographer                    ████████████████████░░   91.7%      55/60    463.3 h    2025-01-21
-  4.   Pixel Farmer Deluxe                  ████████████████████░░   91.4%      32/35    143.3 h    2024-11-19
+       GAME                                 PROGRESS               COMPLETE    ACHIEVED  PLAYTIME   LAST PLAYED
+   01. Bardcore Rhythm Saga                 [######################] 100.0% DONE  96/96    853.3 h    2025-01-18
+   02. Neon Overdrive                       [######################] 100.0% DONE  62/62    686.7 h    2025-01-22
+   03. Void Cartographer                    [####################..]  91.7%       55/60    463.3 h    2025-01-21
+    4. Pixel Farmer Deluxe                  [####################..]  91.4%       32/35    143.3 h    2024-11-19
 
-  15 of 22 games with >= 50% achievements · fetched from api.steampowered.com
+  15 of 22 games with >= 50% achievements  |  source: api.steampowered.com
 ```
 
 ## Why
@@ -126,6 +126,22 @@ steam list --max 60 --sort playtime   # big time sinks that are still far from d
 steam list --search souls  # anything Souls-like
 steam game 250900 --all    # every achievement of one game
 steam list --format json | jq '.[0]'
+```
+
+## Themes
+
+Four built-in themes, all single-hue and emoji-free:
+
+| Theme | Look |
+|---|---|
+| `hacker` | green phosphor terminal (default) |
+| `gamer` | deep crimson |
+| `steam` | steel blue, close to the client's brand |
+| `mono` | pure grayscale, zero colour |
+
+```bash
+steam config set theme mono   # persist it
+steam --theme gamer list      # or override per run
 ```
 
 ## Performance and privacy

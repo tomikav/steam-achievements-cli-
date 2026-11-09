@@ -38,7 +38,7 @@ func (c *Client) get(endpoint string, params url.Values, out any) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusForbidden {
-		return fmt.Errorf("Steam rejected the request (403): check that your API key is valid")
+		return fmt.Errorf("Steam rejected the request (403): check that your API key is valid, that the SteamID is correct, and that your profile's game details are public (Privacy Settings > Game details)")
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Steam API returned HTTP %d for %s", resp.StatusCode, endpoint)

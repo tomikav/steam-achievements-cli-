@@ -45,8 +45,37 @@ type listOptions struct {
 	showAll  bool
 }
 
+// extractTheme pulls the global --theme flag out of the args.
+func extractTheme(args []string) ([]string, string) {
+	var out []string
+	theme := ""
+	for i := 0; i < len(args); i++ {
+		switch {
+		case args[i] == "--theme" && i+1 < len(args):
+			theme = args[i+1]
+			i++
+		case strings.HasPrefix(args[i], "--theme="):
+			theme = strings.TrimPrefix(args[i], "--theme=")
+		default:
+			out = append(out, args[i])
+		}
+	}
+	return out, theme
+}
+
 func main() {
-	args := os.Args[1:]
+	args, themeFlag := extractTheme(os.Args[1:])
+	if themeFlag == "" {
+		if cfg, err := config.Load(); err == nil {
+			themeFlag = cfg.Theme
+		}
+	}
+	if themeFlag != "" {
+		if err := ui.SetTheme(themeFlag); err != nil {
+			ui.Errorf("%v", err)
+			os.Exit(2)
+		}
+	}
 	cmd := "list"
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		cmd = args[0]
@@ -128,6 +157,9 @@ flags:
   --all          also show games that have no achievement system (as 0%%)
   --no-cache     re-fetch achievement counts even if cached
   --demo         fictional data, no API key needed
+  --theme NAME   hacker | gamer | steam | mono
+
+  (the theme flag works on any command: steam --theme mono list)
 `
 
 // --- loading the library -------------------------------------------------------------
@@ -501,8 +533,14 @@ func runConfig(args []string) {
 					ui.Hint("could not resolve vanity URL now (%v); saving it as-is.", err)
 				}
 			}
+		case "theme":
+			if err := ui.SetTheme(value); err != nil {
+				ui.Errorf("%v", err)
+				os.Exit(2)
+			}
+			cfg.Theme = value
 		default:
-			ui.Errorf("unknown field %q (use key or id)", field)
+			ui.Errorf("unknown field %q (use key, id or theme)", field)
 			os.Exit(2)
 		}
 		if err := config.Save(cfg); err != nil {
@@ -577,6 +615,7 @@ func usage(code int) {
     --all          include games without achievements
     --no-cache     bypass the 24h local cache
     --demo         fictional data, no API key needed
+    --theme NAME   hacker | gamer | steam | mono (default: hacker)
 
   EXAMPLES
     steam list --min 80 --sort playtime

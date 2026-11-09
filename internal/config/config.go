@@ -13,6 +13,7 @@ import (
 type Config struct {
 	APIKey  string `json:"api_key"`
 	SteamID string `json:"steam_id"`
+	Theme   string `json:"theme,omitempty"`
 }
 
 // Env var names honored by this tool.
@@ -93,7 +94,11 @@ func MaskKey(k string) string {
 
 // String returns a human friendly, secret-safe summary.
 func (c Config) String() string {
-	return fmt.Sprintf("api_key: %s\nsteam_id: %s", MaskKey(c.APIKey), c.displayID())
+	theme := c.Theme
+	if theme == "" {
+		theme = "hacker (default)"
+	}
+	return fmt.Sprintf("api_key: %s\nsteam_id: %s\ntheme: %s", MaskKey(c.APIKey), c.displayID(), theme)
 }
 
 func (c Config) displayID() string {
