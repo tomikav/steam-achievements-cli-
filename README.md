@@ -1,68 +1,47 @@
 <div align="center">
 
-<img src="docs/banner.svg" alt="steam achievements cli" width="640"/>
+<img src="docs/banner.svg" alt="steam-achievements-cli" width="640"/>
 
-**See how close you are to 100%ing your entire Steam library — right from the terminal.**
+See how close you are to 100%ing your Steam library, straight from the terminal.
 
 [![Release](https://img.shields.io/github/v/release/tomikav/steam-achievements-cli-?style=flat-square&color=c678dd)](https://github.com/tomikav/steam-achievements-cli-/releases/latest)
 [![Go](https://img.shields.io/badge/go-1.26-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev)
 [![Platform](https://img.shields.io/badge/platform-windows%20%7C%20macOS%20%7C%20linux-black?style=flat-square)](https://github.com/tomikav/steam-achievements-cli-/releases/latest)
 [![License](https://img.shields.io/github/license/tomikav/steam-achievements-cli-?style=flat-square)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/tomikav/steam-achievements-cli-?style=flat-square&color=e5c07b)](https://github.com/tomikav/steam-achievements-cli-/stargazers)
 
 </div>
 
 ---
 
-You have hundreds of games. Most sit at 37%. A few are at 98% and it *haunts* you.
-This tool puts your entire trophy cabinet in one beautiful table — sorted, filterable,
-and shame-free. 🏆
+Most Steam libraries are a graveyard of 40% completions. This tool reads your
+library through the Steam Web API and answers one question: how close am I to
+finishing every game I own?
 
-```bash
-steam
-```
+Running `steam` with no arguments lists every game with at least half of its
+achievements unlocked, ranked and color-coded:
 
 ```text
-  ███████╗███████╗ █████╗ ███╗   ███╗ ███████╗
-  ██╔════╝██╔════╝██╔══██╗████╗ ████║ ██╔════╝
-  ███████╗█████╗  ███████║██╔████╔██║ ███████╗
-  ╚════██║██╔══╝  ██╔══██║██║╚██╔╝██║ ╚════██║
-  ███████║███████╗██║  ██║██║ ╚═╝ ██║ ███████║
-  ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚══════╝
-        ✦ achievements edition — flex your trophy cabinet ✦
+$ steam
 
        GAME                                 PROGRESS               COMPLETE  ACHIEVED  PLAYTIME   LAST PLAYED
-  🥇    Bardcore Rhythm Saga                 ▐██████████████████████▌ 100.0% 👑   96/96    853.3 h    2025-01-18
-  🥈    Neon Overdrive                       ▐██████████████████████▌ 100.0% 👑   62/62    686.7 h    2025-01-22
-  🥉    Void Cartographer                    ▐████████████████████░░▌  91.7%     55/60    463.3 h    2025-01-21
-   4.  Pixel Farmer Deluxe                  ▐████████████████████░░▌  91.4%     32/35    143.3 h    2024-11-19
-   ...
+  1.   Bardcore Rhythm Saga                 ██████████████████████  100.0%      96/96    853.3 h    2025-01-18
+  2.   Neon Overdrive                       ██████████████████████  100.0%      62/62    686.7 h    2025-01-22
+  3.   Void Cartographer                    ████████████████████░░   91.7%      55/60    463.3 h    2025-01-21
+  4.   Pixel Farmer Deluxe                  ████████████████████░░   91.4%      32/35    143.3 h    2024-11-19
 
-  ⭐ 15 of 22 games with ≥ 50% achievements  ·  fetched from api.steampowered.com
+  15 of 22 games with >= 50% achievements · fetched from api.steampowered.com
 ```
 
-> The table above is real CLI output (demo dataset). Watch it move:
+## Why
 
-<div align="center">
-<img src="docs/demo.svg" alt="demo" width="640"/>
-</div>
+Achievement pages on the Steam client are one game at a time. There is no
+library-wide view of what is almost done, what is hopeless, and where your
+time actually went. This puts all of it in one table, in your terminal, with
+no setup beyond a free API key.
 
-## ✨ Features
+## Install
 
-- 🎯 **Instant answer** — running `steam` lists every game with **≥ 50%** achievements completed
-- 🎨 **Flashy TUI** — gradient banner, colour-coded progress bars, medals for the podium, a crown for perfection
-- 🔍 **Filters for days** — threshold, name search, sorting, top-N, max cap
-- 🎮 **Deep dive** — `steam game <name>` shows every achievement with global unlock rates
-- 📊 **Library stats** — completion average, perfect-game count and an *honest* hunter rank
-- ⚡ **Fast** — 8 parallel API workers, results cached locally for 24 h
-- 🔌 **Pipeline friendly** — `--format plain` for grep, `--format json` for scripts
-- 🧪 **Zero-setup trial** — `--demo` runs on fictional data, no API key needed
-
-## 📦 Install
-
-### Prebuilt binary (recommended)
-
-Grab the binary for your platform from the [latest release](https://github.com/tomikav/steam-achievements-cli-/releases/latest):
+Download a binary from the [latest release](https://github.com/tomikav/steam-achievements-cli-/releases/latest):
 
 ```powershell
 # Windows (PowerShell)
@@ -76,13 +55,13 @@ curl -fsSL https://github.com/tomikav/steam-achievements-cli-/releases/latest/do
 sudo mv steam /usr/local/bin/
 ```
 
-### With Go
+Or with Go:
 
 ```bash
 go install github.com/tomikav/steam-achievements-cli-@latest
 ```
 
-### From source
+Or from source:
 
 ```bash
 git clone https://github.com/tomikav/steam-achievements-cli-.git
@@ -90,109 +69,101 @@ cd steam-achievements-cli-
 go build -o steam .
 ```
 
-## 🔑 Setup (once, takes 2 minutes)
+## Setup
 
-The Steam Web API needs two things:
+Two things, once:
 
-1. **A free API key** — request it at [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey)
-2. **Your SteamID64** — find it at [steamid.io](https://steamid.io) (or just use your *custom URL name*, the tool resolves it for you)
-
-```bash
-steam config set key C1A3F...YOUR_KEY
-steam config set id gabelogannewell     # custom name OR 76561198… SteamID64
-```
-
-They are stored in your OS config dir (`%AppData%/steam-achievements-cli/` on Windows).
-
-Prefer environment variables?
+1. A free Web API key from [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey)
+2. Your SteamID64 from [steamid.io](https://steamid.io), or just your custom URL name (the tool resolves it)
 
 ```bash
-export STEAM_API_KEY="C1A3F..."     # fish/cmd/PowerShell equivalents work too
-export STEAM_ID="76561198XXXXXXXXX"
+steam config set key YOUR_API_KEY
+steam config set id 76561198XXXXXXXXX
 ```
 
-Try it right now without any of that:
+Credentials are stored in your OS config directory (`%AppData%/steam-achievements-cli/`
+on Windows, `~/.config/steam-achievements-cli/` elsewhere). Environment variables
+`STEAM_API_KEY` and `STEAM_ID` work too and take precedence.
+
+To try it without configuring anything:
 
 ```bash
 steam list --demo
 ```
 
-## 🕹️ Usage
+## Commands
 
 | Command | What it does |
 |---|---|
-| `steam` | every game with ≥ **50%** achievements, ranked with medals |
-| `steam list` | same, with full filter access |
-| `steam perfect` | only 100% complete games 👑 |
-| `steam game <appid\|name>` | detailed achievement checklist + global unlock % |
-| `steam stats` | library-wide stats and your hunter rank |
-| `steam config` | show / set / clear credentials |
+| `steam` | every game with at least 50% achievements completed |
+| `steam list` | the same view with full filter access |
+| `steam perfect` | only 100% complete games |
+| `steam game <appid\|name>` | detailed achievement checklist with global unlock rates |
+| `steam stats` | library-wide statistics |
+| `steam config` | show, set or clear credentials |
 | `steam help` | all commands and flags |
 
-### Filter cheat sheet
+## Filters
 
 | Flag | Example | Effect |
 |---|---|---|
-| `--min N` | `--min 80` | games at ≥ 80% completion |
-| `--max N` | `--max 95` | cap the range (hunting the "almost-done" zone) |
-| `--search TEXT` | `--search knight` | name contains… |
-| `--sort MODE` | `--sort playtime` | `completion` \| `name` \| `playtime` \| `count` |
-| `--top N` | `--top 5` | first N after sorting |
-| `--format FMT` | `--format json` | `pretty` \| `plain` \| `json` |
-| `--all` | | include games without any achievements (as 0%) |
-| `--no-cache` | | bypass the 24 h cache |
-| `--demo` | | fictional data, no API key |
+| `--min N` | `--min 80` | games at 80% completion or higher |
+| `--max N` | `--max 95` | cap the range |
+| `--search TEXT` | `--search knight` | name contains, case-insensitive |
+| `--sort MODE` | `--sort playtime` | `completion`, `name`, `playtime` or `count` |
+| `--top N` | `--top 5` | first N results after sorting |
+| `--format FMT` | `--format json` | `pretty`, `plain` or `json` |
+| `--all` | | include games without an achievement system (as 0%) |
+| `--no-cache` | | bypass the local cache |
+| `--demo` | | fictional data, no API key needed |
 
-### Recipes
+Some combinations worth trying:
 
 ```bash
-steam                      # default: everything at ≥ 50%
-steam list --min 90        # the nearly-perfect shelf
-steam list --max 60 --sort playtime   # biggest time-sinks still far from done 😬
+steam                      # default view: everything at 50% or more
+steam list --min 90        # the almost-done shelf
+steam list --max 60 --sort playtime   # big time sinks that are still far from done
 steam list --search souls  # anything Souls-like
-steam game 250900 --all    # every single achievement of a game
-steam list --format json | jq '.[0]'   # scriptable
+steam game 250900 --all    # every achievement of one game
+steam list --format json | jq '.[0]'
 ```
 
-## ⚡ Performance
+## Performance and privacy
 
-- The first run downloads achievement counts for your whole library using **8 parallel workers**
-  (~1–2 s per 100 games depending on latency).
-- Results are cached in your OS cache dir for **24 hours**. Re-runs are instant.
-- Your API key never leaves your machine: it lives in your config file or env vars and is only
-  ever sent to `api.steampowered.com`.
+The first run fetches achievement counts for your whole library with 8 parallel
+workers, which takes a second or two per hundred games. Results are cached
+locally for 24 hours; after that, re-runs are instant.
 
-## ❓ FAQ
+Your API key stays on your machine. It is written to a user-only config file and
+sent only to `api.steampowered.com`.
 
-**Is my API key safe?**
-It is stored locally with user-only permissions and only sent to Steam's official API.
+## FAQ
 
-**Why the trailing dash in the repo name?** 🫡
-An accident of birth — we embrace it. `go install` works fine with it.
+**Is the API key safe?**
+It is stored locally with user-only permissions and only ever sent to Steam's official API.
+
+**Why does the repo name end with a dash?**
+A typo at creation time. It stayed, and `go install` works fine with it.
 
 **A game shows no percentage.**
 Games without an achievement system are skipped unless you pass `--all`.
 
 **Does it work on private profiles?**
-Your own key grants access to your own data, so yes — private profiles are fine for the owner.
+Yes, for your own profile. Your key grants access to your own data.
 
-## 🗺️ Roadmap
+## Roadmap
 
-- [ ] `steam streak` — recent completion velocity
-- [ ] Rarity ranking: your rarest achievements
-- [ ] Compare with a friend's library
-- [ ] Shell completion (bash/zsh/fish/pwsh)
+- Recent completion velocity (`steam streak`)
+- Rarity ranking: your statistically rarest unlocks
+- Side-by-side comparison with a friend's library
+- Shell completions (bash, zsh, fish, pwsh)
 
-## 🤝 Contributing
+## Contributing
 
-PRs welcome! `go build ./... && go vet ./...` must pass. Keep the fun in the code.
+PRs are welcome. `go build ./... && go vet ./...` must pass before submitting.
 
-## 📄 License
+## License
 
-[MIT](LICENSE) © [tomikav](https://github.com/tomikav)
+[MIT](LICENSE)
 
-<div align="center">
-
-If this tool helped you face your backlog, consider leaving a ⭐ — it genuinely helps.
-
-</div>
+If you find it useful, a star helps other people find it.
