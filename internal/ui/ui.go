@@ -45,6 +45,12 @@ var Themes = map[string]Theme{
 		Good: "#ffb000", Warn: "#ff8a3d", Bad: "#ff2e63", Text: "#fff0f3", Dim: "#9a7280", Faint: "#3a2229", Ink: "#1a0509"},
 	"steam": {Name: "steam", From: "#66c0f4", To: "#c06cff", Accent: "#66c0f4",
 		Good: "#8fd3ff", Warn: "#ffd166", Bad: "#ff6b81", Text: "#e8f1fa", Dim: "#7a8ea3", Faint: "#1f2b38", Ink: "#06121d"},
+	"synthwave": {Name: "synthwave", From: "#ff4ecd", To: "#00e5ff", Accent: "#ff4ecd",
+		Good: "#00e5ff", Warn: "#ffcc66", Bad: "#ff5c8a", Text: "#f5e9ff", Dim: "#9a86b8", Faint: "#2e2340", Ink: "#14081f"},
+	"sunset": {Name: "sunset", From: "#ff6a5f", To: "#ffc47b", Accent: "#ff7e5f",
+		Good: "#ffd166", Warn: "#ff9f43", Bad: "#ef476f", Text: "#fff1e6", Dim: "#b08b7a", Faint: "#3a2a24", Ink: "#1f0f08"},
+	"frost": {Name: "frost", From: "#e0f7ff", To: "#6f9bff", Accent: "#8fd3ff",
+		Good: "#a0f0ff", Warn: "#ffe08a", Bad: "#ff8fa3", Text: "#f0f8ff", Dim: "#8796a8", Faint: "#243041", Ink: "#0a1420"},
 	"mono": {Name: "mono", From: "#ffffff", To: "#7a7a7a", Accent: "#ffffff",
 		Good: "#e0e0e0", Warn: "#b0b0b0", Bad: "#909090", Text: "#eeeeee", Dim: "#8a8a8a", Faint: "#333333", Ink: "#000000"},
 }
@@ -583,20 +589,28 @@ func rarity(global float64) string {
 
 // --- stats view ------------------------------------------------------------------------------
 
-// RenderStats draws the library-wide dashboard.
+// RenderStats draws the library-wide dashboard for the current terminal.
 func RenderStats(games []model.Game, owner string) string {
+	return renderStats(games, owner, TermWidth())
+}
+
+func renderStats(games []model.Game, owner string, tw int) string {
 	s := summarize(games)
 	var b strings.Builder
 
 	card := func(label, value, sub string) string {
 		return box("", []string{paint(active.Dim, label), gradient(value), paint(active.Dim, Truncate(sub, 20))}, 20)
 	}
-	b.WriteString(indent(joinColumns(1,
+	cards := []string{
 		card("GAMES", fmt.Sprint(s.total), formatPlaytime(s.playtime)+" played"),
 		card("WITH ACHIEVEMENTS", fmt.Sprint(s.tracked), fmt.Sprintf("%d at 50%% or more", s.overHalf)),
 		card("PERFECT", fmt.Sprint(s.perfect), "100% complete"),
 		card("AVERAGE", fmt.Sprintf("%.1f%%", s.average), "completion"),
-	), 2))
+	}
+	perRow := max(1, min(len(cards), (tw-2)/25))
+	for i := 0; i < len(cards); i += perRow {
+		b.WriteString(indent(joinColumns(1, cards[i:min(i+perRow, len(cards))]...), 2))
+	}
 
 	// Completion distribution.
 	var buckets [11]int

@@ -224,3 +224,85 @@ func TestNotPublicIsNotRetried(t *testing.T) {
 		t.Errorf("calls = %d, want 1", calls.Load())
 	}
 }
+
+func TestFriends(t *testing.T) {
+	fakeSteam(t, map[string]func(http.ResponseWriter, *http.Request){
+		"/ISteamUser/GetFriendList/v1/": status(200, `{"friendslist":{"friends":[{"steamid":"1","friend_since":10},{"steamid":"2","friend_since":20}]}}`),
+		pathSummaries: func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("steamids") != "1,2" {
+				t.Errorf("steamids = %q", r.URL.Query().Get("steamids"))
+			}
+			_, _ = w.Write([]byte(`{"response":{"players":[{"steamid":"1","personaname":"Ana","personastate":1,"gameextrainfo":"Hades"},{"steamid":"2","personaname":"Bo","personastate":0}]}}`))
+		},
+	})
+	fr, err := New(testKey, testID).Friends()
+	if err != nil || len(fr) != 2 || fr[0].Game != "Hades" || fr[1].FriendSince != 20 {
+		t.Fatalf("friends: %v %+v", err, fr)
+	}
+}
+
+func TestFriendsPrivate(t *testing.T) {
+	fakeSteam(t, map[string]func(http.ResponseWriter, *http.Request){
+		"/ISteamUser/GetFriendList/v1/": status(401, ""),
+	})
+	if _, err := New(testKey, testID).Friends(); KindOf(err) != KindPrivateFriends {
+		t.Fatalf("want KindPrivateFriends, got %v", err)
+	}
+}
+
+func TestStoreDetails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("appids") != "620" {
+			t.Errorf("appids = %q", r.URL.Query().Get("appids"))
+		}
+		_, _ = w.Write([]byte(`{"620":{"success":true,"data":{"name":"Portal 2","short_description":"Sequel &amp; <b>more</b> puzzles.",
+			"developers":["Valve"],"publishers":["Valve"],"header_image":"https://x/h.jpg","genres":[{"description":"Action"},{"description":"Adventure"}],
+			"release_date":{"date":"18 Apr, 2011"},"metacritic":{"score":95},"platforms":{"windows":true,"mac":true,"linux":false}}}}`))
+	}))
+	defer srv.Close()
+	old := StoreURL
+	StoreURL = srv.URL
+	defer func() { StoreURL = old }()
+	info, err := StoreDetails(620)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Description != "Sequel & more puzzles." || info.Metacritic != 95 || len(info.Genres) != 2 || strings.Join(info.Platforms, ",") != "windows,mac" {
+		t.Fatalf("%+v", info)
+	}
+}
+
+func TestPlayerAchievementsRealPayload(t *testing.T) {
+	fakeSteam(t, map[string]func(http.ResponseWriter, *http.Request){
+		pathPlayer: func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("l") != "english" {
+				t.Errorf("language not requested")
+			}
+			_, _ = w.Write([]byte(`{"playerstats":{"steamID":"1","gameName":"G","achievements":[
+				{"apiname":"ACH_WIN","achieved":1,"unlocktime":1700000000,"name":"Winner","description":"Win once"},
+				{"apiname":"ACH_LOSE","achieved":0,"unlocktime":0,"name":"Loser","description":""}],"success":true}}`))
+		},
+		"/ISteamUserStats/GetSchemaForGame/v2/": status(200, `{"game":{"gameName":"G","availableGameStats":{"achievements":[
+			{"name":"ACH_WIN","displayName":"Winner","description":"Win once","icon":"https://x/win.jpg","icongray":"https://x/wing.jpg","hidden":0},
+			{"name":"ACH_LOSE","displayName":"Loser","hidden":1,"icon":"https://x/l.jpg","icongray":"https://x/lg.jpg"}]}}}`),
+		"/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/": status(200, `{"achievementpercentages":{"achievements":[
+			{"name":"ACH_WIN","percent":"12.5"},{"name":"ACH_LOSE","percent":3.25}]}}`),
+	})
+	c := New(testKey, testID)
+	ach, err := c.PlayerAchievements(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, defs, err := c.GameDetail(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ach = c.MergeDetail(ach, defs)
+	if ach[0].Name != "ACH_WIN" || ach[0].DisplayName != "Winner" || ach[0].Description != "Win once" ||
+		ach[0].Global != 12.5 || ach[0].Icon != "https://x/win.jpg" || !ach[0].Achieved || ach[0].UnlockTime != 1700000000 {
+		t.Fatalf("first: %+v", ach[0])
+	}
+	if ach[1].Global != 3.25 || !ach[1].Hidden || ach[1].IconGray != "https://x/lg.jpg" {
+		t.Fatalf("second: %+v", ach[1])
+	}
+}

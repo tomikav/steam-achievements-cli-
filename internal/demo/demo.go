@@ -72,7 +72,57 @@ func Achievements(g model.Game) []model.Achievement {
 			DisplayName: fmt.Sprintf("%s %s %d", prefixes[i%len(prefixes)], suffixes[(i*3)%len(suffixes)], i+1),
 			Achieved:    achieved,
 			Global:      global,
+			Description: descriptions[i%len(descriptions)],
+			UnlockTime:  unlockTime(achieved, i),
 		})
 	}
 	return out
+}
+
+var descriptions = []string{
+	"Finish the opening chapter without losing a single life.",
+	"Discover every hidden room in the old observatory.",
+	"Defeat the final boss using only the starting weapon.",
+	"Collect all 100 crumbs scattered across the kingdom.",
+	"Complete the game on the hardest difficulty.",
+	"Watch the sunrise from the top of the tallest tower.",
+}
+
+func unlockTime(achieved bool, i int) int64 {
+	if !achieved {
+		return 0
+	}
+	return 1735000000 - int64(i)*86400*3
+}
+
+// Friends returns a fictional friends list for the demo browser.
+func Friends() []model.Friend {
+	return []model.Friend{
+		{SteamID: "1", Name: "nightowl", State: 1, Game: "Neon Overdrive"},
+		{SteamID: "2", Name: "pixel_witch", State: 1},
+		{SteamID: "3", Name: "Captain Cactus", State: 3},
+		{SteamID: "4", Name: "speedrun_sam", State: 1, Game: "Tower of Regret"},
+		{SteamID: "5", Name: "laundrylord", State: 0, LastLogoff: 1731000000},
+		{SteamID: "6", Name: "opossum", State: 0, LastLogoff: 1700000000},
+		{SteamID: "7", Name: "bard_core", State: 2},
+	}
+}
+
+// Store returns fictional store details for the demo game view.
+func Store(appID int) model.StoreInfo {
+	for _, g := range Games() {
+		if g.AppID == appID {
+			return model.StoreInfo{
+				Name:        g.Name,
+				Description: "A fictional game from the demo library. In your real library this space shows the store description, the header art and where the game is installed.",
+				Developers:  []string{"Demo Studio"},
+				Publishers:  []string{"Demo Publishing"},
+				Genres:      []string{"Action", "Adventure", "Indie"},
+				Released:    "14 Feb, 2024",
+				Metacritic:  70 + appID%25,
+				Platforms:   []string{"windows", "linux"},
+			}
+		}
+	}
+	return model.StoreInfo{}
 }

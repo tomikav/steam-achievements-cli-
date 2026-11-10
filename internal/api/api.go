@@ -80,6 +80,7 @@ const (
 	KindRateLimited         // HTTP 429
 	KindNetwork             // DNS, TLS, timeout, proxy...
 	KindNoStats             // the game has no achievement system
+	KindPrivateFriends      // the friends list is not public
 )
 
 // Error is returned by every client call that fails.
@@ -111,6 +112,8 @@ func (e *Error) Error() string {
 			b.WriteString("Steam is rate limiting requests")
 		case KindNoStats:
 			b.WriteString("game has no achievements")
+		case KindPrivateFriends:
+			b.WriteString("your friends list is private")
 		default:
 			b.WriteString("Steam API request failed")
 		}
@@ -378,12 +381,17 @@ func (c *Client) OwnedGames() ([]model.Game, error) {
 
 type playerStatsResponse struct {
 	Playerstats struct {
-		GameName     string          `json:"gameName"`
-		Success      *bool           `json:"success"`
-		Error        json.RawMessage `json:"error"`
+		GameName string          `json:"gameName"`
+		Success  *bool           `json:"success"`
+		Error    json.RawMessage `json:"error"`
+		// Steam names the identifier "apiname". With l=<language> it also
+		// sends the display name ("name") and the description.
 		Achievements []struct {
-			Name     string `json:"name"`
-			Achieved int    `json:"achieved"`
+			APIName     string `json:"apiname"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Achieved    int    `json:"achieved"`
+			UnlockTime  int64  `json:"unlocktime"`
 		} `json:"achievements"`
 	} `json:"playerstats"`
 }
@@ -544,6 +552,10 @@ type schemaResponse struct {
 			Achievements []struct {
 				Name        string `json:"name"`
 				DisplayName string `json:"displayName"`
+				Description string `json:"description"`
+				Hidden      int    `json:"hidden"`
+				Icon        string `json:"icon"`
+				IconGray    string `json:"icongray"`
 			} `json:"achievements"`
 		} `json:"availableGameStats"`
 	} `json:"game"`
@@ -564,11 +576,12 @@ func (c *Client) GameDetail(appID int) (gameName string, defs map[string]model.A
 	defs = map[string]model.Achievement{}
 
 	var schema schemaResponse
-	schemaParams := url.Values{"key": {c.Key}, "appid": {fmt.Sprint(appID)}, "format": {"json"}}
+	schemaParams := url.Values{"key": {c.Key}, "appid": {fmt.Sprint(appID)}, "l": {"english"}, "format": {"json"}}
 	if err := c.get("/ISteamUserStats/GetSchemaForGame/v2/", schemaParams, &schema); err == nil {
 		gameName = schema.Game.GameName
 		for _, a := range schema.Game.AvailableStats.Achievements {
-			defs[a.Name] = model.Achievement{Name: a.Name, DisplayName: a.DisplayName}
+			defs[a.Name] = model.Achievement{Name: a.Name, DisplayName: a.DisplayName,
+				Description: a.Description, Hidden: a.Hidden == 1, Icon: a.Icon, IconGray: a.IconGray}
 		}
 	}
 
@@ -603,8 +616,16 @@ func (c *Client) GameDetail(appID int) (gameName string, defs map[string]model.A
 func (c *Client) MergeDetail(ach []model.Achievement, defs map[string]model.Achievement) []model.Achievement {
 	for i, a := range ach {
 		if d, ok := defs[a.Name]; ok {
-			ach[i].DisplayName = strings.TrimSpace(d.DisplayName)
+			if v := strings.TrimSpace(d.DisplayName); v != "" {
+				ach[i].DisplayName = v
+			}
+			if v := strings.TrimSpace(d.Description); v != "" {
+				ach[i].Description = v
+			}
 			ach[i].Global = d.Global
+			ach[i].Hidden = d.Hidden
+			ach[i].Icon = d.Icon
+			ach[i].IconGray = d.IconGray
 		}
 		if ach[i].DisplayName == "" {
 			ach[i].DisplayName = a.Name
