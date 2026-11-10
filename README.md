@@ -282,3 +282,4 @@ go test ./...
 <p align="center">
   <sub>MIT licensed &nbsp;·&nbsp; not affiliated with Valve or Steam</sub>
 </p>
+<!-- docs: minor edit -->
