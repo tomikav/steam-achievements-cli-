@@ -1,6 +1,6 @@
 # Binary output
-steam
-steam.exe
+/steam
+/steam.exe
 dist/
 
 # OS cruft
