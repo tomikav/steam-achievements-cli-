@@ -1,5 +1,6 @@
 // Package cache stores achievement progress per AppID so repeated runs are
-// instant. Entries expire after TTL hours.
+// instant. Entries for games not played since they were fetched are reused
+// for up to MaxAge; everything else expires after TTL.
 package cache
 
 import (
@@ -17,6 +18,9 @@ type Entry struct {
 	Achieved int   `json:"achieved"`
 	Total    int   `json:"total"`
 	Fetched  int64 `json:"fetched_unix"`
+	// Unavailable marks a game Steam refused to report on. Such entries only
+	// live for TTL, so the game is retried the next day instead of every run.
+	Unavailable bool `json:"unavailable,omitempty"`
 }
 
 func filePath() (string, error) {
@@ -58,7 +62,29 @@ func Save(m map[int]Entry) {
 	_ = os.WriteFile(path, data, 0o644)
 }
 
-// Valid reports whether an entry is still fresh.
+// MaxAge bounds how long an entry for an untouched game is trusted, so new
+// achievements added by updates or DLC eventually show up.
+const MaxAge = 30 * 24 * time.Hour
+
+// Valid reports whether an entry is younger than TTL.
 func Valid(e Entry) bool {
 	return time.Now().Unix()-e.Fetched < int64(TTL/time.Second)
+}
+
+// Fresh reports whether a cached entry can be reused for a game last played
+// at lastPlayed (unix seconds, 0 if unknown). Achievements only unlock while
+// playing, so a game that was not played since the entry was fetched cannot
+// have changed: those entries are kept for up to MaxAge instead of TTL.
+func Fresh(e Entry, lastPlayed int64) bool {
+	age := time.Now().Unix() - e.Fetched
+	if age < 0 || age >= int64(MaxAge/time.Second) {
+		return false
+	}
+	if e.Unavailable {
+		return Valid(e)
+	}
+	if lastPlayed > 0 && lastPlayed < e.Fetched {
+		return true
+	}
+	return Valid(e)
 }

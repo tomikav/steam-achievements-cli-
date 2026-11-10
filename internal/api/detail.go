@@ -16,11 +16,14 @@ func (c *Client) PlayerAchievements(appID int) ([]model.Achievement, error) {
 		"format":  {"json"},
 	}
 	var out playerStatsResponse
-	if err := c.get("/ISteamUserStats/GetPlayerAchievements/v0001/", params, &out); err != nil {
+	if err := c.get("/ISteamUserStats/GetPlayerAchievements/v1/", params, &out); err != nil {
+		if KindOf(err) == KindForbidden {
+			return nil, c.Diagnose(err)
+		}
 		return nil, err
 	}
-	if out.Playerstats.Error != nil {
-		return nil, fmt.Errorf("%s", out.Playerstats.Error.ErrorDesc)
+	if err := out.err(); err != nil {
+		return nil, err
 	}
 	ach := make([]model.Achievement, 0, len(out.Playerstats.Achievements))
 	for _, a := range out.Playerstats.Achievements {
