@@ -290,3 +290,5 @@ Colors follow your terminal theme; use `--theme steam` to force the Steam palett
 See also: `steam-achievements --help` for the full flag list.
 
 See also: `steam-achievements --help` for the full flag list.
+
+See also: `steam-achievements --help` for the full flag list.
