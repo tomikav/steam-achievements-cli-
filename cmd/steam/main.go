@@ -23,6 +23,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/charmbracelet/x/term"
+
 	"github.com/tomikav/steam-achievements-cli-/internal/api"
 	"github.com/tomikav/steam-achievements-cli-/internal/cache"
 	"github.com/tomikav/steam-achievements-cli-/internal/config"
@@ -100,6 +102,11 @@ func main() {
 		}
 	}
 	cmd := "list"
+	// Bare `steam` in an interactive terminal opens the browser; with flags
+	// or when piped it keeps the classic table.
+	if len(args) == 0 && ui.IsTTY() && term.IsTerminal(os.Stdin.Fd()) {
+		cmd = "browse"
+	}
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		cmd = args[0]
 		args = args[1:]
@@ -109,6 +116,8 @@ func main() {
 		runList(args, defaultThreshold)
 	case "perfect":
 		runList(args, 100)
+	case "browse", "ui":
+		runBrowse(args)
 	case "game":
 		runGame(args)
 	case "stats":
@@ -272,7 +281,7 @@ flags:
   --no-cache     re-fetch achievement counts even if cached
   --demo         fictional data, no API key needed
   --no-icons     do not draw game icons (Sixel terminals only)
-  --theme NAME   hacker | gamer | steam | mono  (works on any command)
+  --theme NAME   hacker, gamer, steam, synthwave, sunset, frost, mono
 `
 
 // --- loading the library ----------------------------------------------------------
@@ -561,6 +570,58 @@ func printPlain(games []model.Game) {
 	fmt.Println("percent\tachieved\ttotal\tappid\tname")
 	for _, g := range games {
 		fmt.Printf("%.1f\t%d\t%d\t%d\t%s\n", g.Percent, g.Achieved, g.Total, g.AppID, g.Name)
+	}
+}
+
+// --- steam browse ---------------------------------------------------------------------------
+
+func runBrowse(args []string) {
+	defer flushWarnings()
+	o := &listOptions{format: "pretty"}
+	fs := flag.NewFlagSet("browse", flag.ExitOnError)
+	fs.BoolVar(&o.demo, "demo", false, "fictional data")
+	fs.BoolVar(&o.noCache, "no-cache", false, "re-fetch achievement counts")
+	fs.BoolVar(&o.noIcons, "no-icons", false, "do not draw icons")
+	fs.Usage = func() { fmt.Fprintln(os.Stderr, "usage: steam browse [--demo] [--no-cache] [--no-icons]") }
+	_ = fs.Parse(args)
+
+	lib := loadLibrary(o)
+	opt := ui.BrowseOptions{
+		Owner: lib.owner,
+		Games: lib.games,
+		Demo:  o.demo,
+		Icons: !o.noIcons && !o.demo && icons.Supported(),
+	}
+	if o.demo {
+		opt.LoadAchievements = func(appID int) ([]model.Achievement, error) {
+			for _, g := range lib.games {
+				if g.AppID == appID {
+					return demo.Achievements(g), nil
+				}
+			}
+			return nil, fmt.Errorf("unknown game")
+		}
+		opt.LoadFriends = func() ([]model.Friend, error) { return demo.Friends(), nil }
+		opt.LoadStore = func(appID int) (model.StoreInfo, error) { return demo.Store(appID), nil }
+	} else {
+		opt.LoadFriends = lib.client.Friends
+		opt.LoadStore = api.StoreDetails
+		opt.SteamID = lib.client.SteamID
+		opt.LoadAchievements = func(appID int) ([]model.Achievement, error) {
+			ach, err := lib.client.PlayerAchievements(appID)
+			if err != nil {
+				return nil, err
+			}
+			if _, defs, err := lib.client.GameDetail(appID); err == nil {
+				ach = lib.client.MergeDetail(ach, defs)
+			}
+			return ach, nil
+		}
+	}
+	if err := ui.Browse(opt); err != nil {
+		ui.Errorf("%v", err)
+		ui.Fix("Use the table view instead: steam list")
+		os.Exit(1)
 	}
 }
 
@@ -948,7 +1009,8 @@ func usage(w io.Writer, code int) {
 	fmt.Fprint(w, ui.Banner())
 	fmt.Fprintf(w, "  %s %s\n\n", ui.Dim("version"), version)
 	section("COMMANDS", [][2]string{
-		{"steam", "every game with 50% or more achievements"},
+		{"steam", "interactive browser (table when piped)"},
+		{"steam browse", "interactive browser: tabs, search, sort, achievements"},
 		{"steam list [flags]", "filter and sort your library"},
 		{"steam perfect", "only 100% complete games"},
 		{"steam game <appid|name>", "achievement checklist for one game"},
@@ -968,7 +1030,7 @@ func usage(w io.Writer, code int) {
 		{"--no-cache", "ignore the local cache"},
 		{"--no-icons", "do not draw game icons"},
 		{"--demo", "fictional data, no API key needed"},
-		{"--theme NAME", "hacker | gamer | steam | mono (default: hacker)"},
+		{"--theme NAME", "hacker, gamer, steam, synthwave, sunset, frost, mono"},
 	}, 24)
 	section("EXAMPLES", [][2]string{
 		{"steam list --min 80 --sort playtime", ""},
