@@ -284,3 +284,5 @@ go test ./...
 </p>
 <!-- docs: minor edit -->
 <!-- docs: pass 2 -->
+
+Colors follow your terminal theme; use `--theme steam` to force the Steam palette.
