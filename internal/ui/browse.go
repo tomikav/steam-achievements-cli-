@@ -59,7 +59,7 @@ var listTabs = []string{"ALL", "IN PROGRESS", "ALMOST", "PERFECT", "NOT STARTED"
 var listSorts = []string{"completion", "remaining", "playtime", "recent", "name", "size"}
 var achTabs = []string{"ALL", "LOCKED", "UNLOCKED"}
 var achSorts = []string{"smart", "rarity", "name", "unlocked"}
-var themeOrder = []string{"hacker", "gamer", "steam", "synthwave", "sunset", "frost", "mono"}
+var themeOrder = []string{"steam", "hacker", "gamer", "synthwave", "sunset", "frost", "mono"}
 
 type achState struct {
 	appID   int
@@ -1830,8 +1830,10 @@ func Browse(opt BrowseOptions) error {
 			runningBusy = true
 			go func() {
 				id := launcher.RunningAppID()
+				on := launcher.SteamRunning()
 				events <- func() {
 					runningBusy = false
+					b.play.steamKnown, b.play.steamOn = true, on || id != 0
 					b.updateRunning(id)
 				}
 			}()

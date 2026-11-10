@@ -42,3 +42,19 @@ func Close(appID int) error {
 	}
 	return nil
 }
+
+func steamExe() string {
+	if runtime.GOOS == "darwin" {
+		return "" // macOS: the steam:// handler is the reliable route
+	}
+	p, err := exec.LookPath("steam")
+	if err != nil {
+		return ""
+	}
+	return p
+}
+
+// SteamRunning reports whether a Steam client process exists.
+func SteamRunning() bool {
+	return exec.Command("pgrep", "-x", "steam").Run() == nil
+}

@@ -22,9 +22,18 @@ type Install struct {
 	SizeBytes int64
 }
 
-// Launch starts a game (or opens Steam's install dialog if it is not
-// installed) through the steam:// protocol handler.
+// Launch starts a game without bringing up the Steam window: Steam is
+// started with -silent (tray only) and -applaunch runs the game. If the
+// Steam executable cannot be found it falls back to the steam:// protocol,
+// which also covers games that still need installing.
 func Launch(appID int) error {
+	if exe := steamExe(); exe != "" {
+		cmd := exec.Command(exe, "-silent", "-applaunch", strconv.Itoa(appID))
+		if err := cmd.Start(); err == nil {
+			go cmd.Wait() //nolint:errcheck // reap the process; Steam keeps running on its own
+			return nil
+		}
+	}
 	return Open(fmt.Sprintf("steam://rungameid/%d", appID))
 }
 

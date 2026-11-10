@@ -66,3 +66,15 @@ func Close(appID int) error {
 	}
 	return err
 }
+
+func steamExe() string {
+	return strings.ReplaceAll(regQuery(`HKCU\Software\Valve\Steam`, "SteamExe"), "/", `\`)
+}
+
+// SteamRunning reports whether the Steam client is running (visible or in
+// the tray).
+func SteamRunning() bool {
+	v := regQuery(`HKCU\Software\Valve\Steam\ActiveProcess`, "pid")
+	n, err := strconv.ParseInt(strings.TrimPrefix(strings.ToLower(v), "0x"), 16, 64)
+	return err == nil && n != 0
+}

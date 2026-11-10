@@ -1,193 +1,272 @@
 <p align="center">
-  <img src="docs/banner.png" alt="steam-achievements-cli" width="480">
+  <img src="docs/banner.png" alt="steam-achievements-cli: every achievement, one terminal" width="100%">
 </p>
 
 <p align="center">
-  Your Steam achievements in the terminal: progress for every game, achievement lists with icons,<br>
-  friends online, and a game view that launches and closes games.
+  <a href="https://github.com/tomikav/steam-achievements-cli-/releases/latest"><img src="https://img.shields.io/github/v/release/tomikav/steam-achievements-cli-?style=for-the-badge&label=release&labelColor=171a21&color=66c0f4" alt="release"></a>
+  <a href="https://github.com/tomikav/steam-achievements-cli-/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tomikav/steam-achievements-cli-/ci.yml?branch=main&style=for-the-badge&label=build&labelColor=171a21&color=a4d007" alt="build"></a>
+  <img src="https://img.shields.io/badge/windows%20%C2%B7%20macos%20%C2%B7%20linux-66c0f4?style=for-the-badge&labelColor=171a21" alt="platforms">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/tomikav/steam-achievements-cli-?style=for-the-badge&labelColor=171a21&color=c7d5e0" alt="license"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/tomikav/steam-achievements-cli-/releases/latest"><img src="https://img.shields.io/github/v/release/tomikav/steam-achievements-cli-?style=flat-square&label=release" alt="release"></a>
-  <a href="https://github.com/tomikav/steam-achievements-cli-/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tomikav/steam-achievements-cli-/ci.yml?branch=main&style=flat-square&label=build" alt="build"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/tomikav/steam-achievements-cli-?style=flat-square" alt="license"></a>
+  <a href="#install"><b>Install</b></a> &nbsp;&middot;&nbsp;
+  <a href="#set-up-in-3-steps"><b>Set up</b></a> &nbsp;&middot;&nbsp;
+  <a href="#what-you-get">What you get</a> &nbsp;&middot;&nbsp;
+  <a href="#keys">Keys</a> &nbsp;&middot;&nbsp;
+  <a href="#something-not-working">Help</a>
 </p>
+
+<br>
 
 <p align="center">
-  <img src="docs/home.png" alt="Home screen" width="900">
+  <img src="docs/demo.gif" alt="Tour: home, library, game view, achievements, friends, stats" width="100%">
 </p>
 
----
+<br>
+
+**steam** is a terminal app for your Steam library. See how close you are to
+100% in every game, browse achievements with their real icons and rarity,
+check which friends are online and what they are playing, and launch or close
+games with one key. Steam can stay in the background the whole time.
+
+<br>
 
 ## Install
 
-**Windows** (PowerShell):
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Windows** &nbsp;(PowerShell)
 
 ```powershell
 irm https://raw.githubusercontent.com/tomikav/steam-achievements-cli-/main/install.ps1 | iex
 ```
 
-**macOS / Linux**:
+</td>
+<td width="50%" valign="top">
+
+**macOS / Linux**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tomikav/steam-achievements-cli-/main/install.sh | sh
 ```
 
-**With Go** (1.26+):
+</td>
+</tr>
+</table>
+
+That is it: the script downloads the latest release, verifies its checksum and
+adds `steam` to your PATH. No admin rights. Open a new terminal afterwards.
+
+<details>
+<summary>Other ways to install</summary>
+
+<br>
+
+With Go 1.26+:
 
 ```bash
 go install github.com/tomikav/steam-achievements-cli-/cmd/steam@latest
 ```
 
-The scripts download the latest release, check its SHA-256 checksum and put the
-`steam` command on your PATH. No admin rights needed. Open a new terminal when
-they finish. On Linux the command is called `steam-ach`, so it does not clash
-with the Steam client.
+Or download a zip from [Releases](https://github.com/tomikav/steam-achievements-cli-/releases/latest)
+and put the binary anywhere on your PATH.
 
-You can also grab a zip from the [releases page](https://github.com/tomikav/steam-achievements-cli-/releases/latest).
+On Linux the installer names the command `steam-ach` so it does not clash with
+the Steam client. Set `BIN_NAME=steam` before running it to change that.
 
-## Set up (2 minutes, once)
+</details>
 
-**1. Get an API key.** Go to [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey),
-type any domain (`localhost` works) and copy the key.
+<br>
 
-**2. Save the key and your Steam ID.** Your ID is the 17-digit number at
-[steamid.io](https://steamid.io); your custom profile name also works.
+## Set up in 3 steps
+
+**1 &nbsp;Get a free API key** at [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey).
+Any domain works in the form, `localhost` is fine.
+
+**2 &nbsp;Save it with your Steam ID** (the 17-digit number from [steamid.io](https://steamid.io),
+or your custom profile name):
 
 ```bash
 steam config set key YOUR_API_KEY
 steam config set id  YOUR_STEAM_ID
 ```
 
-**3. Make your game details public.** In Steam open
-[Edit Profile > Privacy Settings](https://steamcommunity.com/my/edit/settings) and set:
+**3 &nbsp;Make your game details public** in
+[Steam › Edit Profile › Privacy Settings](https://steamcommunity.com/my/edit/settings):
 
-| Setting | Value | Why |
-|---|---|---|
-| My profile | Public | required |
-| Game details | **Public** | required, this is where achievements live |
-| Friends List | Public | only for the friends view |
+| Setting | Set to | Needed for |
+|:--|:--|:--|
+| My profile | **Public** | everything |
+| Game details | **Public** | your games and achievements |
+| Friends List | **Public** | the friends view (optional) |
 
-"Friends only" is not enough: the API key does not log in as you, so Steam
-treats it like a stranger. Changes can take a few minutes to apply.
+> "Friends only" is not enough. The API key does not sign in as you, so Steam
+> treats it like a visitor. Changes can take a few minutes to apply.
 
-**Check that everything works:**
+Then check and go:
 
 ```bash
-steam doctor
+steam doctor   # tells you if anything is missing
+steam          # opens the app
 ```
 
-Then just run `steam`.
+<br>
 
-## What it does
+## What you get
 
 ### Home
 
-Run `steam`. You land on your library at a glance: what you played last, the
-games closest to 100%, and which friends are online and what they are playing.
-`enter` opens anything, `p` jumps straight to launching a game.
+Your library at a glance: what you played last, the games closest to 100%,
+and friends online with the game they are in. Press `enter` on anything to
+open it, `p` to jump straight into a game.
 
-### Library
-
-Press `l`. Every game you own, including the ones without achievements (demos,
-dedicated servers and soundtracks are left out). Tabs split it into in
-progress, almost done (75%+), perfect, not started and no achievements. Type
-`/` to search, `s` to change the sort.
-
-<p align="center"><img src="docs/browse.png" alt="Library" width="900"></p>
+<p align="center"><img src="docs/home.png" alt="Home screen" width="100%"></p>
 
 ### Game view
 
-Press `enter` on a game: store description, developer, genres, Metacritic
-score, install size, your progress and the full achievement list with icons
-and descriptions. Unlocked achievements show in colour (gold frame when fewer
-than 5% of players have them, silver under 15%); locked ones are greyed out.
+Everything about one game: store description, developer, genres, Metacritic
+score, install size, your progress and the full achievement list. Unlocked
+achievements show in colour, framed in gold when fewer than 5% of players have
+them; locked ones are greyed out. Pick one to read its description and when
+you unlocked it.
 
-<p align="center"><img src="docs/game.png" alt="Game view" width="900"></p>
+**Play from here.** `p` launches the game, `c` twice closes it. While it runs,
+a session clock ticks and achievements refresh every 45 seconds, so new
+unlocks pop up as they happen.
 
-Press `p` to launch the game and `c` twice to close it. While it runs the view
-re-reads your achievements every 45 seconds and shows new unlocks as they
-happen.
+<p align="center"><img src="docs/game.png" alt="Game view" width="100%"></p>
 
-### Friends
+<table>
+<tr>
+<td width="50%" valign="top">
 
-Press `f` for a grid of your friends with their avatar, status and the game
-they are playing. `enter` opens their profile.
+**Library**<br>
+Every game you own, with or without achievements. Tabs for in progress,
+almost there, perfect and not started. Live search with `/`.
 
-<p align="center"><img src="docs/friends.png" alt="Friends" width="900"></p>
+<img src="docs/browse.png" alt="Library" width="100%">
 
-### Table and stats for scripts
+</td>
+<td width="50%" valign="top">
 
-`steam list` prints a table, `steam stats` a dashboard. Both work without the
-interactive view and support `--format json` or `--format plain`.
+**Achievements**<br>
+The full list: locked ones easiest first, unlocked ones rarest first,
+with global unlock rates and rarity labels.
 
-<p align="center"><img src="docs/list.png" alt="steam list" width="900"></p>
+<img src="docs/achievements.png" alt="Achievements" width="100%">
 
-Game and achievement icons appear in terminals with image support (Sixel):
-Windows Terminal 1.22+, WezTerm, iTerm2 3.5+, foot. Elsewhere everything works,
-just without pictures.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+**Friends**<br>
+Who is online, who is away and what everyone is playing. `enter` opens
+their profile.
+
+<img src="docs/friends.png" alt="Friends" width="100%">
+
+</td>
+<td width="50%" valign="top">
+
+**Stats**<br>
+Totals, average completion, a chart of your library by completion and the
+games you are closest to finishing.
+
+<img src="docs/stats.png" alt="Stats" width="100%">
+
+</td>
+</tr>
+</table>
+
+### Steam stays in the background
+
+The app reads everything from Steam's web API, so the Steam window never has
+to be open. When you launch a game on Windows or Linux, Steam is started hidden in the tray if it
+is not running yet, and the game opens directly.
+
+### Icons in your terminal
+
+Game icons, achievement icons, avatars and header art are drawn as real images
+in terminals that support them: **Windows Terminal 1.22+**, WezTerm, iTerm2
+3.5+, foot. In other terminals everything works, just without pictures.
+
+### Themes
+
+`steam` (default, Steam's own blue and grey) &nbsp;·&nbsp; `hacker` &nbsp;·&nbsp; `gamer` &nbsp;·&nbsp;
+`synthwave` &nbsp;·&nbsp; `sunset` &nbsp;·&nbsp; `frost` &nbsp;·&nbsp; `mono`
+
+Press `t` inside the app to cycle through them, or keep one:
+
+```bash
+steam config set theme synthwave
+```
+
+<br>
 
 ## Keys
 
-On the home screen: arrows move between and inside the cards, `enter` opens,
-`l` library, `f` friends, `d` stats.
-
-| Key | Library | Game view |
-|---|---|---|
-| `↑` `↓` | move | browse achievements |
-| `←` `→` | switch tab | all / locked / unlocked |
-| `enter` | open game | full-screen achievement list |
-| `/` | search | |
-| `s` / `r` | sort / reverse | sort |
-| `p` | open game view | launch the game |
+| Key | Home / Library | Game view |
+|:--:|:--|:--|
+| `↑` `↓` `←` `→` | move, switch cards or tabs | browse achievements, filter |
+| `enter` | open | full-screen achievement list |
+| `p` | open game and play | launch the game |
 | `c` `c` | | close the game |
+| `/` | search the library | |
+| `s` &nbsp;`r` | sort, reverse | sort |
+| `l` &nbsp;`f` &nbsp;`d` | library, friends, stats | |
 | `o` | achievement page in browser | store page |
-| `f` | friends | open game folder |
-| `d` | dashboard | |
-| `t` | change colour theme | change colour theme |
-| `?` | all keys | all keys |
-| `esc` / `q` | home / quit | back / quit |
+| `t` | change theme | change theme |
+| `?` | every key | every key |
+| `esc` &nbsp;`q` | back, quit | back, quit |
 
 Mouse wheel and clicks work too.
 
-## Commands
+<br>
 
-| Command | Does |
-|---|---|
-| `steam` | opens the browser (prints the table when piped) |
-| `steam list` | table of games at 50% or more (`--min`, `--max`, `--search`, `--sort`, `--top`) |
-| `steam perfect` | only 100% games |
-| `steam game <name or id>` | achievement checklist for one game |
-| `steam stats` | library dashboard |
-| `steam doctor` | checks key, Steam ID and privacy settings |
-| `steam config` | shows or changes your settings |
+## For scripts
+
+Every view has a plain command, and `--format json` or `--format plain` for
+piping:
+
+```bash
+steam list --min 90                   # games at 90% or more
+steam list --sort playtime --top 10   # where your hours went
+steam perfect                         # only 100% games
+steam game "elden ring"               # one game's checklist
+steam stats                           # library dashboard
+steam list --format json | jq '.[0]'
+```
 
 Add `--demo` to any command to try it with made-up data, no account needed.
 
-```bash
-steam list --min 90                  # almost finished games
-steam list --sort playtime --top 10  # where your hours went
-steam list --format json             # for scripts
-steam --theme synthwave              # themes: hacker, gamer, steam, synthwave, sunset, frost, mono
-```
+<br>
 
-## Problems
+## Something not working?
 
-Run `steam doctor` first. It tells you exactly what is wrong and how to fix it.
+Run `steam doctor` first. It checks your key, your Steam ID and every privacy
+setting, and tells you exactly what to change.
 
-| You see | Fix |
-|---|---|
-| `Steam rejected your API key` | Create a new key and run `steam config set key ...`. If you set a `STEAM_API_KEY` variable, it overrides the saved key. |
+| You see | Do this |
+|:--|:--|
+| `Steam rejected your API key` | Create a new key and run `steam config set key ...`. A `STEAM_API_KEY` environment variable overrides the saved key. |
 | `Your game details are private` | Set Game details to Public (step 3) and wait a few minutes. |
 | `your friends list is private` | Set Friends List to Public, then press `R` in the friends view. |
-| A game is skipped with HTTP 500 | Steam fails for that game; it is retried the next day. |
-| No icons | Your terminal has no image support, or press `i` to toggle them. |
+| One game skipped with HTTP 500 | Steam fails for that game; it is retried the next day. |
+| No pictures | Your terminal has no image support. Press `i` to hide the empty space. |
+
+<br>
 
 ## Privacy
 
-The tool only reads data. Your key is stored in a file only your user can read
-and is sent only to Steam. Results are cached on your machine so later runs
-are fast. No telemetry.
+Read-only: the app never changes anything on your account. Your key is stored
+in a file only your user can read and is sent only to Steam. Results are
+cached on your machine so later runs open instantly. No telemetry.
+
+<br>
 
 ## Build from source
 
@@ -198,6 +277,8 @@ go build -o steam ./cmd/steam
 go test ./...
 ```
 
-## License
+<br>
 
-[MIT](LICENSE)
+<p align="center">
+  <sub>MIT licensed &nbsp;·&nbsp; not affiliated with Valve or Steam</sub>
+</p>

@@ -23,6 +23,8 @@ type playState struct {
 	storeErr     error
 	install      launcher.Install
 	installKnown bool
+	steamKnown   bool
+	steamOn      bool // Steam client running (window or tray)
 	running      bool
 	launching    bool
 	launchedAt   time.Time
@@ -299,6 +301,13 @@ func (b *browser) buildPlayInfo(f *frame, top, h, w int) {
 		lines = append(lines, paint(active.Dim, "Store details unavailable: "+p.storeErr.Error()))
 	default:
 		lines = append(lines, paint(active.Accent, spinnerFrames[b.frameN%len(spinnerFrames)])+" "+paint(active.Dim, "Loading store details..."))
+	}
+	if p.steamKnown {
+		if p.steamOn {
+			lines = append(lines, paint(active.Dim, padRight("steam", 12))+paint(active.Good, "running in the background"))
+		} else {
+			lines = append(lines, paint(active.Dim, padRight("steam", 12))+paint(active.Dim, "closed, p starts it hidden in the tray"))
+		}
 	}
 	switch {
 	case !p.installKnown:

@@ -213,8 +213,14 @@ func TestSnapshots(t *testing.T) {
 		shots["help"] = b.build()
 		b.handleKey("esc")
 		b.handleKey("f")
-		b.setFriends([]model.Friend{{SteamID: "1", Name: "nightowl", State: 1, Game: "Neon Overdrive"}, {SteamID: "2", Name: "pixel_witch", State: 1},
-			{SteamID: "3", Name: "Captain Cactus", State: 3}, {SteamID: "5", Name: "laundrylord", LastLogoff: 1731000000}}, nil)
+		now := time.Now().Unix()
+		b.setFriends([]model.Friend{{SteamID: "1", Name: "nightowl", State: 1, Game: "ELDEN RING"}, {SteamID: "2", Name: "pixel_witch", State: 1},
+			{SteamID: "3", Name: "Captain Cactus", State: 3}, {SteamID: "4", Name: "speedrun_sam", State: 1, Game: "Hades"},
+			{SteamID: "5", Name: "laundrylord", LastLogoff: now - 3600*5}, {SteamID: "6", Name: "opossum", LastLogoff: now - 86400*2},
+			{SteamID: "7", Name: "bard_core", State: 1, Game: "Terraria"}, {SteamID: "8", Name: "moth", State: 1},
+			{SteamID: "9", Name: "kettle", LastLogoff: now - 600}, {SteamID: "10", Name: "zephyr", State: 3},
+			{SteamID: "11", Name: "ruinous", LastLogoff: now - 86400*9}, {SteamID: "12", Name: "glimmer", State: 1, Game: "Stardew Valley"},
+			{SteamID: "13", Name: "orbit", LastLogoff: now - 86400*30}, {SteamID: "14", Name: "tinkerer", State: 1}, {SteamID: "15", Name: "lantern", LastLogoff: now - 7200}}, nil)
 		shots["friends"] = b.build()
 		b.handleKey("esc")
 		b.handleKey("p")

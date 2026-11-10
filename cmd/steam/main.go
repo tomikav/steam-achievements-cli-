@@ -281,7 +281,7 @@ flags:
   --no-cache     re-fetch achievement counts even if cached
   --demo         fictional data, no API key needed
   --no-icons     do not draw game icons (Sixel terminals only)
-  --theme NAME   hacker, gamer, steam, synthwave, sunset, frost, mono
+  --theme NAME   steam (default), hacker, gamer, synthwave, sunset, frost, mono
 `
 
 // --- loading the library ----------------------------------------------------------
@@ -908,7 +908,7 @@ func runConfig(args []string) {
 		r, _ := config.Resolve()
 		theme := r.Theme
 		if theme == "" {
-			theme = "hacker (default)"
+			theme = "steam (default)"
 		}
 		id := r.SteamID
 		if id == "" {
@@ -1030,7 +1030,7 @@ func usage(w io.Writer, code int) {
 		{"--no-cache", "ignore the local cache"},
 		{"--no-icons", "do not draw game icons"},
 		{"--demo", "fictional data, no API key needed"},
-		{"--theme NAME", "hacker, gamer, steam, synthwave, sunset, frost, mono"},
+		{"--theme NAME", "steam (default), hacker, gamer, synthwave, sunset, frost, mono"},
 	}, 24)
 	section("EXAMPLES", [][2]string{
 		{"steam list --min 80 --sort playtime", ""},

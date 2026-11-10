@@ -43,8 +43,10 @@ var Themes = map[string]Theme{
 		Good: "#3dffa2", Warn: "#ffd166", Bad: "#ff5c7a", Text: "#e6fff4", Dim: "#6b8f80", Faint: "#23332c", Ink: "#04140d"},
 	"gamer": {Name: "gamer", From: "#ff2e63", To: "#ffb000", Accent: "#ff2e63",
 		Good: "#ffb000", Warn: "#ff8a3d", Bad: "#ff2e63", Text: "#fff0f3", Dim: "#9a7280", Faint: "#3a2229", Ink: "#1a0509"},
-	"steam": {Name: "steam", From: "#66c0f4", To: "#c06cff", Accent: "#66c0f4",
-		Good: "#8fd3ff", Warn: "#ffd166", Bad: "#ff6b81", Text: "#e8f1fa", Dim: "#7a8ea3", Faint: "#1f2b38", Ink: "#06121d"},
+	// Steam's own palette: light blue on navy, blue-grey text, the green of
+	// the client's Play button for good news. This is the default theme.
+	"steam": {Name: "steam", From: "#66c0f4", To: "#1a9fff", Accent: "#66c0f4",
+		Good: "#a4d007", Warn: "#e6b54a", Bad: "#e5534b", Text: "#c7d5e0", Dim: "#8f98a0", Faint: "#2a3f5a", Ink: "#0e141b"},
 	"synthwave": {Name: "synthwave", From: "#ff4ecd", To: "#00e5ff", Accent: "#ff4ecd",
 		Good: "#00e5ff", Warn: "#ffcc66", Bad: "#ff5c8a", Text: "#f5e9ff", Dim: "#9a86b8", Faint: "#2e2340", Ink: "#14081f"},
 	"sunset": {Name: "sunset", From: "#ff6a5f", To: "#ffc47b", Accent: "#ff7e5f",
@@ -55,7 +57,7 @@ var Themes = map[string]Theme{
 		Good: "#e0e0e0", Warn: "#b0b0b0", Bad: "#909090", Text: "#eeeeee", Dim: "#8a8a8a", Faint: "#333333", Ink: "#000000"},
 }
 
-var active = Themes["hacker"]
+var active = Themes["steam"]
 
 // Tier colours are shared by every theme except mono, so a "gold" game reads
 // the same everywhere.
