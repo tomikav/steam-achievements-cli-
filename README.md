@@ -284,3 +284,7 @@ go test ./...
 </p>
 <!-- docs: minor edit -->
 <!-- docs: pass 2 -->
+
+Colors follow your terminal theme; use `--theme steam` to force the Steam palette.
+
+See also: `steam-achievements --help` for the full flag list.
