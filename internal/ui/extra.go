@@ -261,7 +261,7 @@ func (b *browser) panelRows() []panelRow {
 		for _, it := range b.huntItems() {
 			right := paint(active.Faint, "loading")
 			if it.global > 0 {
-				right = bold(huntColor(it.global), fmt.Sprintf("%.1f%%", it.global)) + paint(active.Dim, " of players")
+				right = meter(it.global/100, 12, huntColor(it.global)) + "  " + bold(huntColor(it.global), padLeft(fmt.Sprintf("%.1f%%", it.global), 5)) + paint(active.Dim, " of players")
 			} else if x.globalsN == 0 {
 				right = paint(active.Faint, "no data")
 			}
@@ -300,9 +300,14 @@ func (b *browser) panelRows() []panelRow {
 			rows = append(rows, panelRow{appID: n.AppID, icon: "g" + strconv.Itoa(n.AppID), title: n.Title, right: right, detail: detail, url: n.URL})
 		}
 	case panelStorage:
-		for _, in := range b.storageItems() {
+		items := b.storageItems()
+		var biggest int64
+		for _, in := range items {
+			biggest = max(biggest, in.Size)
+		}
+		for _, in := range items {
 			g, owned := b.gameByID(in.AppID)
-			right := bold(active.Text, launcher.FormatSize(in.Size))
+			right := meter(float64(in.Size)/float64(max(biggest, 1)), 16, lerp(active.From, active.To, float64(len(rows))/float64(max(len(items)-1, 1)))) + "  " + bold(active.Text, padLeft(launcher.FormatSize(in.Size), 8))
 			var detail string
 			switch {
 			case !owned || g.LastPlayed == 0:
@@ -431,7 +436,7 @@ func (b *browser) buildPanel(f *frame) {
 		line += "     "
 	}
 	f.put(1, 0, padRight(line, b.w))
-	f.put(2, 0, padRight("  "+paint(active.Dim, b.panelHint()), b.w))
+	f.put(2, 0, padRight("  "+paint(active.Dim, Truncate(b.panelHint(), b.w-4)), b.w))
 	f.put(3, 0, paint(active.Faint, strings.Repeat("─", b.w)))
 
 	h := b.h - 6
@@ -446,7 +451,7 @@ func (b *browser) buildPanel(f *frame) {
 		center(chip(active.Bad, active.Ink, "ERROR") + " " + paint(active.Text, p.err.Error()) + paint(active.Dim, "   R to retry"))
 		return
 	case p.loading:
-		center(paint(active.Accent, spinnerFrames[b.frameN%len(spinnerFrames)]) + " " + paint(active.Text, "Loading "+strings.ToLower(panelTitles[x.kind])+"..."))
+		center(paint(active.Accent, b.spin()) + " " + paint(active.Text, "Loading "+strings.ToLower(panelTitles[x.kind])+"..."))
 		return
 	case len(rows) == 0:
 		center(paint(active.Dim, b.panelEmpty()))
@@ -468,7 +473,7 @@ func (b *browser) buildPanel(f *frame) {
 		sel := idx == p.cursor
 		marker := "   "
 		if sel {
-			marker = " " + paint(active.Accent, "▌") + " "
+			marker = " " + paint(pulse(active.Accent, active.To), "▌") + " "
 		}
 		textCol := 3
 		if img, ok := b.small[r.icon]; ok && b.icons {
@@ -525,7 +530,7 @@ func (b *browser) panelSummary(n int) string {
 	case panelHunt:
 		s := paint(active.Text, fmt.Sprint(n)) + paint(active.Dim, plural(n, " locked achievement ", " locked achievements "))
 		if x.globalsN > 0 {
-			s += paint(active.Accent, spinnerFrames[b.frameN%len(spinnerFrames)]) + paint(active.Dim, fmt.Sprintf(" rarity of %d games ", x.globalsN))
+			s += paint(active.Accent, b.spin()) + paint(active.Dim, fmt.Sprintf(" rarity of %d games ", x.globalsN))
 		}
 		return s
 	case panelDeals:

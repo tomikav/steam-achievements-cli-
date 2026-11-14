@@ -54,6 +54,8 @@ type BrowseOptions struct {
 	CloseSteam func() error
 	// Uninstall asks Steam to uninstall a game.
 	Uninstall func(appID int) error
+	// NoMotion turns the animations off.
+	NoMotion bool
 }
 
 // --- state --------------------------------------------------------------------
@@ -75,7 +77,7 @@ var listTabs = []string{"ALL", "IN PROGRESS", "ALMOST", "PERFECT", "NOT STARTED"
 var listSorts = []string{"completion", "remaining", "playtime", "recent", "name", "size"}
 var achTabs = []string{"ALL", "LOCKED", "UNLOCKED"}
 var achSorts = []string{"smart", "rarity", "name", "unlocked"}
-var themeOrder = []string{"steam", "hacker", "gamer", "synthwave", "sunset", "frost", "mono"}
+var themeOrder = []string{"steam", "aurora", "hacker", "gamer", "synthwave", "sunset", "frost", "mono"}
 
 type achState struct {
 	appID   int
@@ -120,6 +122,9 @@ type browser struct {
 	big       map[string]string // sixel by key, 36 px
 	status    string
 	frameN    int
+	motion    bool      // animations on
+	started   time.Time // browser start, for looping effects
+	animStart time.Time // when the current view opened
 	lastClick struct {
 		row int
 		at  time.Time
@@ -824,6 +829,8 @@ func (f *frame) put(row, col int, text string) {
 }
 
 func (b *browser) build() frame {
+	b.beginFrame()
+	defer endFrame()
 	f := frame{rows: make([][]seg, b.h)}
 	switch b.mode {
 	case modeGame:
@@ -865,18 +872,28 @@ func (b *browser) buildList(f *frame) {
 		paint(active.Text, fmt.Sprintf("%.1f%%", s.average))+paint(active.Dim, " average"))
 
 	// tabs
-	var tabs strings.Builder
-	tabs.WriteString(" ")
-	for i, t := range listTabs {
-		label := fmt.Sprintf("%s %d", t, b.tabCount(i))
-		if i == b.tab {
-			tabs.WriteString(chip(active.Accent, active.Ink, label))
-		} else {
-			tabs.WriteString(paint(active.Dim, " "+label+" "))
-		}
+	tabLine := func(counts bool) string {
+		var tabs strings.Builder
 		tabs.WriteString(" ")
+		for i, t := range listTabs {
+			label := t
+			if counts || i == b.tab {
+				label = fmt.Sprintf("%s %d", t, b.tabCount(i))
+			}
+			if i == b.tab {
+				tabs.WriteString(chip(active.Accent, active.Ink, label))
+			} else {
+				tabs.WriteString(paint(active.Dim, " "+label+" "))
+			}
+			tabs.WriteString(" ")
+		}
+		return tabs.String()
 	}
-	f.put(1, 0, padRight(tabs.String(), b.w))
+	tabs := tabLine(true)
+	if width(tabs) > b.w { // narrow terminal: counts only on the active tab
+		tabs = truncateANSI(tabLine(false), b.w)
+	}
+	f.put(1, 0, padRight(tabs, b.w))
 
 	// search + sort
 	var line string
@@ -1085,7 +1102,7 @@ func (b *browser) buildGame(f *frame) {
 	h := b.listHeight() - 1
 	switch {
 	case a.loading:
-		spin := spinnerFrames[b.frameN%len(spinnerFrames)]
+		spin := b.spin()
 		f.put(4+h/2, 0, padRight(strings.Repeat(" ", max(b.w/2-14, 0))+paint(active.Accent, spin)+" "+paint(active.Text, "Loading achievements..."), b.w))
 		return
 	case a.err != nil:
@@ -1293,7 +1310,7 @@ func (b *browser) buildFriends(f *frame) {
 	}
 	switch {
 	case fr.loading:
-		center(paint(active.Accent, spinnerFrames[b.frameN%len(spinnerFrames)]) + " " + paint(active.Text, "Loading friends..."))
+		center(paint(active.Accent, b.spin()) + " " + paint(active.Text, "Loading friends..."))
 		return
 	case fr.err != nil:
 		msg := fr.err.Error()
@@ -1445,7 +1462,9 @@ func (b *browser) buildFooter(f *frame) {
 		}
 	}
 	st := ""
-	if b.status != "" {
+	if strings.HasPrefix(b.status, "ACHIEVEMENT") {
+		st = shimmer(b.status) + " "
+	} else if b.status != "" {
 		st = paint(active.Text, b.status) + " "
 	}
 	// Add hints while they fit; the least important ones are last.
@@ -1696,15 +1715,48 @@ func parseEscape(b []byte) (int, keyEvent) {
 type screen struct {
 	out   *bufio.Writer
 	drawn map[[2]int]string
+	rows  []string // text last drawn on each row
 }
 
 func (s *screen) draw(f frame, full bool) {
 	w := s.out
-	if full {
+	if full || len(s.rows) != len(f.rows) {
 		w.WriteString("\x1b[2J")
 		s.drawn = map[[2]int]string{}
+		s.rows = make([]string, len(f.rows))
+	}
+	// Rows that would be redrawn anyway because an icon in them changes.
+	touched := map[int]bool{}
+	for _, ic := range f.icons {
+		if s.drawn[[2]int{ic.row, ic.col}] != ic.key {
+			for dy := 0; dy < max(ic.h, 1); dy++ {
+				touched[ic.row+dy] = true
+			}
+		}
+	}
+	// Rows that lose an icon must repaint their text over it.
+	still := map[[2]int]bool{}
+	for _, ic := range f.icons {
+		still[[2]int{ic.row, ic.col}] = true
+	}
+	for pos := range s.drawn {
+		if !still[pos] {
+			for dy := 0; dy < 4; dy++ {
+				touched[pos[0]+dy] = true
+			}
+		}
 	}
 	for r, segs := range f.rows {
+		// Only rows whose text changed are sent: animation frames stay small.
+		var key strings.Builder
+		for _, sg := range segs {
+			fmt.Fprintf(&key, "%d\x00%s\x00", sg.col, sg.text)
+		}
+		if k := key.String(); k == s.rows[r] && !touched[r] {
+			continue
+		} else {
+			s.rows[r] = k
+		}
 		for _, sg := range segs {
 			fmt.Fprintf(w, "\x1b[%d;%dH%s", r+1, sg.col+1, sg.text)
 		}
@@ -1792,7 +1844,10 @@ func Browse(opt BrowseOptions) error {
 
 	events := make(chan func(), 64)
 	startTime := time.Now()
-	tick := time.NewTicker(120 * time.Millisecond)
+	b.motion = !opt.NoMotion
+	b.started, b.animStart = time.Now(), time.Now()
+	lastView := b.animKey()
+	tick := time.NewTicker(frameTick)
 	defer tick.Stop()
 
 	statusAt := time.Time{}
@@ -1919,6 +1974,9 @@ func Browse(opt BrowseOptions) error {
 			b.wantAchIcons = false
 			go loadIcons(achIconRequests(b.ach.appID, b.ach.list, b.smallPx()), events, b.small, b.smallPx())
 		}
+		if k := b.animKey(); k != lastView {
+			lastView, b.animStart = k, time.Now()
+		}
 		if dirty {
 			full := b.full
 			b.full = false
@@ -1962,6 +2020,9 @@ func Browse(opt BrowseOptions) error {
 				b.full = true
 				dirty = true
 			}
+			if b.animating() || b.motion && (b.mode == modeHome || b.mode == modePanel) || b.motion && strings.HasPrefix(b.status, "ACHIEVEMENT") {
+				dirty = true
+			}
 			if b.mode == modeGame && b.ach.loading || b.mode == modePanel && (b.extra.panels[b.extra.kind].loading || b.extra.globalsN > 0) {
 				dirty = true
 			}
@@ -1986,7 +2047,7 @@ func Browse(opt BrowseOptions) error {
 					b.status = "Steam did not report the game as running"
 					statusAt = time.Now()
 				}
-				if b.mode == modePlay && b.frameN%4 == 0 {
+				if b.mode == modePlay && b.frameN%8 == 0 {
 					dirty = true
 				}
 			}

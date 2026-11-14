@@ -108,6 +108,10 @@ func (a Activity) Heatmap(weeks int) []string {
 				b.WriteString("  ")
 				continue
 			}
+			if float64(w) > animT*float64(weeks) { // still sweeping in
+				b.WriteString(paint(level(0), "■") + " ")
+				continue
+			}
 			b.WriteString(paint(level(a.byDay[dayKey(d)]), "■") + " ")
 		}
 		rows = append(rows, b.String())

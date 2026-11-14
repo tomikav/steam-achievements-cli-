@@ -205,13 +205,20 @@ tonight. `→` flips it to rarest first, `enter` opens the game.
 
 <p align="center"><img src="docs/hunt.png" alt="Achievement hunt" width="100%"></p>
 
-### Activity
+### Activity and charts
 
-A year of unlocks, one square per day, with your current and best streak.
-It is on the stats screen (`d`), and the home screen keeps the month count and
-streak in view.
+The stats screen (`d`) draws your whole library: one bar split by state, a
+year of unlocks with one square per day and your streaks, unlocks per month
+and per weekday, where your hours went, and games per completion range. The
+home screen keeps the month count, the streak and a 4-week sparkline in view.
 
-<p align="center"><img src="docs/activity.png" alt="Activity heatmap" width="100%"></p>
+<p align="center"><img src="docs/activity.png" alt="Stats: library bar, activity heatmap, monthly and weekday charts, most played" width="100%"></p>
+
+### Motion
+
+Views ease in when they open: bars grow, numbers count up, the heatmap sweeps
+in from the left and the banner gets a slow highlight. Only the rows that
+change are redrawn, so it stays light. Set `STEAM_NO_MOTION=1` to turn it off.
 
 <table>
 <tr>
@@ -256,14 +263,16 @@ in terminals that support them: **Windows Terminal 1.22+**, WezTerm, iTerm2
 
 ### Themes
 
-`steam` (default, Steam's own blue and grey) &nbsp;·&nbsp; `hacker` &nbsp;·&nbsp; `gamer` &nbsp;·&nbsp;
+`steam` (default, Steam's own blue and grey) &nbsp;·&nbsp; `aurora` &nbsp;·&nbsp; `hacker` &nbsp;·&nbsp; `gamer` &nbsp;·&nbsp;
 `synthwave` &nbsp;·&nbsp; `sunset` &nbsp;·&nbsp; `frost` &nbsp;·&nbsp; `mono`
 
 Press `t` inside the app to cycle through them, or keep one:
 
 ```bash
-steam config set theme synthwave
+steam config set theme aurora
 ```
+
+<p align="center"><img src="docs/aurora.png" alt="The aurora theme: mint to violet on deep indigo" width="100%"></p>
 
 <br>
 

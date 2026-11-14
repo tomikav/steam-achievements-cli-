@@ -621,3 +621,77 @@ func TestPanels(t *testing.T) {
 		}
 	}
 }
+
+func TestMotion(t *testing.T) {
+	games := demoLike()
+	for _, w := range []int{150, 80} {
+		b := newBrowser(BrowseOptions{Games: games, Owner: "tomika"}, w, 40)
+		b.setFriends(nil, nil)
+		still := strings.Join(flatten(b.build(), w), "\n")
+		// mid-animation frames must stay inside the terminal
+		b.motion, b.started = true, time.Now().Add(-3*time.Second)
+		for _, mode := range []string{"", "d", "a", "l"} {
+			if mode != "" {
+				b.handleKey(mode)
+			}
+			for _, age := range []time.Duration{0, 200 * time.Millisecond, 2 * time.Second} {
+				b.animStart = time.Now().Add(-age)
+				for i, l := range flatten(b.build(), w) {
+					if width(l) > w {
+						t.Fatalf("mode %q age %v row %d is %d wide (max %d)", mode, age, i, width(l), w)
+					}
+				}
+			}
+			b.handleKey("esc")
+		}
+		if animT != 1 || animClock != 0 {
+			t.Fatal("animation clocks must reset after a frame")
+		}
+		// with motion off the frame is the final, static one
+		b.motion = false
+		if got := strings.Join(flatten(b.build(), w), "\n"); got != still {
+			t.Fatalf("static frame changed at width %d", w)
+		}
+	}
+}
+
+func TestCharts(t *testing.T) {
+	a := NewActivity(demoLike())
+	vals, labels := a.Monthly(12)
+	if len(vals) != 12 || labels[11] != time.Now().Format("Jan") {
+		t.Fatalf("monthly: %v %v", vals, labels)
+	}
+	sum := 0
+	for _, v := range a.Weekdays() {
+		sum += v
+	}
+	if sum != a.Since(365) {
+		t.Fatalf("weekdays add up to %d, year has %d", sum, a.Since(365))
+	}
+	for _, l := range columns(vals, labels, 5, 5) {
+		if width(l) != 60 {
+			t.Fatalf("column chart row is %d wide", width(l))
+		}
+	}
+	if w := width(meter(0.37, 16, "#ffffff")); w != 16 {
+		t.Fatalf("meter is %d wide", w)
+	}
+	bar := libraryBar(demoLike(), 40)
+	if len(bar) < 2 || width(bar[0]) != 40 {
+		t.Fatalf("library bar: %d", width(bar[0]))
+	}
+	if width(sparkline(a.Daily(28), "#000000", "#ffffff")) != 28 {
+		t.Fatal("sparkline width")
+	}
+	for _, w := range []int{60, 70, 100, 160} {
+		for i, l := range strings.Split(renderStats(demoLike(), "x", w), "\n") {
+			if width(l) > w {
+				t.Fatalf("stats row %d is %d wide at %d", i, width(l), w)
+			}
+		}
+	}
+	if err := SetTheme("aurora"); err != nil {
+		t.Fatal(err)
+	}
+	_ = SetTheme("steam")
+}

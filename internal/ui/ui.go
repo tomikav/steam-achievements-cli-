@@ -53,6 +53,9 @@ var Themes = map[string]Theme{
 		Good: "#ffd166", Warn: "#ff9f43", Bad: "#ef476f", Text: "#fff1e6", Dim: "#b08b7a", Faint: "#3a2a24", Ink: "#1f0f08"},
 	"frost": {Name: "frost", From: "#e0f7ff", To: "#6f9bff", Accent: "#8fd3ff",
 		Good: "#a0f0ff", Warn: "#ffe08a", Bad: "#ff8fa3", Text: "#f0f8ff", Dim: "#8796a8", Faint: "#243041", Ink: "#0a1420"},
+	// Northern lights: mint to violet on deep indigo.
+	"aurora": {Name: "aurora", From: "#6ef3c5", To: "#b18cff", Accent: "#6ef3c5",
+		Good: "#9be564", Warn: "#ffd479", Bad: "#ff6b8b", Text: "#e8f1ff", Dim: "#8b93b5", Faint: "#2b2f4a", Ink: "#0b0d1a"},
 	"mono": {Name: "mono", From: "#ffffff", To: "#7a7a7a", Accent: "#ffffff",
 		Good: "#e0e0e0", Warn: "#b0b0b0", Bad: "#909090", Text: "#eeeeee", Dim: "#8a8a8a", Faint: "#333333", Ink: "#000000"},
 }
@@ -183,7 +186,7 @@ func Bar(pct float64, w int) string {
 	if w < 4 {
 		w = 4
 	}
-	cells := pct / 100 * float64(w)
+	cells := pct / 100 * float64(w) * animT
 	full := int(cells)
 	if full > w {
 		full = w
@@ -614,12 +617,51 @@ func renderStats(games []model.Game, owner string, tw int) string {
 		b.WriteString(indent(joinColumns(1, cards[i:min(i+perRow, len(cards))]...), 2))
 	}
 
+	// The whole library in one bar.
+	if lb := libraryBar(games, min(max(tw-6, 20), 100)); lb != nil {
+		b.WriteString("\n  " + gradient("LIBRARY") + paint(active.Dim, "  every game by state") + "\n")
+		for _, l := range lb {
+			b.WriteString("  " + l + "\n")
+		}
+	}
+
 	// Activity map: achievements unlocked per day.
 	if act := NewActivity(games); !act.Empty() {
 		cur, long := act.Streaks()
-		b.WriteString("\n  " + gradient("ACTIVITY") + paint(active.Dim, fmt.Sprintf("  %d achievements in the last year   %d this month   streak %d %s, best %d",
-			act.Since(365), act.Since(30), cur, plural(cur, "day", "days"), long)) + "\n")
+		head := fmt.Sprintf("%d achievements in the last year   %d this month   streak %d %s, best %d",
+			countUp(act.Since(365)), countUp(act.Since(30)), cur, plural(cur, "day", "days"), long)
+		if tw < len(head)+14 {
+			head = fmt.Sprintf("%d in the last year   streak %d, best %d", act.Since(365), cur, long)
+		}
+		b.WriteString("\n  " + gradient("ACTIVITY") + paint(active.Dim, "  "+head) + "\n")
 		for _, l := range act.Heatmap(min(52, max((tw-12)/2, 8))) {
+			b.WriteString("  " + l + "\n")
+		}
+
+		// Unlocks per month and per weekday, side by side when there is room.
+		vals, labels := act.Monthly(12)
+		month := append([]string{gradient("PER MONTH") + paint(active.Dim, "  achievements unlocked")}, columns(vals, labels, 5, map[bool]int{true: 5, false: 4}[tw >= 66])...)
+		wd := act.Weekdays()
+		peak := 1
+		for _, n := range wd {
+			peak = max(peak, n)
+		}
+		week := []string{gradient("PER WEEKDAY") + paint(active.Dim, "  when you unlock")}
+		for i, name := range []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"} {
+			week = append(week, paint(active.Dim, name)+" "+meter(float64(wd[i])/float64(peak), 24, lerp(active.From, active.To, float64(i)/6))+" "+paint(active.Text, fmt.Sprint(countUp(wd[i]))))
+		}
+		b.WriteString("\n")
+		if tw >= 112 {
+			b.WriteString(indent(joinColumns(6, strings.Join(month, "\n"), strings.Join(week, "\n")), 2))
+		} else {
+			b.WriteString(indent(strings.Join(month, "\n"), 2) + "\n" + indent(strings.Join(week, "\n"), 2))
+		}
+	}
+
+	// Where the hours went.
+	if pt := playtimeChart(games, 6, min(max(tw-50, 10), 40)); len(pt) > 0 {
+		b.WriteString("\n  " + gradient("MOST PLAYED") + paint(active.Dim, "  share of all your hours") + "\n")
+		for _, l := range pt {
 			b.WriteString("  " + l + "\n")
 		}
 	}
@@ -649,7 +691,7 @@ func renderStats(games []model.Game, owner string, tw int) string {
 		if i == 10 {
 			label = "   100%"
 		}
-		w := int(math.Round(float64(buckets[i]) / float64(peak) * 40))
+		w := int(math.Round(float64(buckets[i]) / float64(peak) * 40 * animT))
 		if buckets[i] > 0 && w == 0 {
 			w = 1
 		}
@@ -679,7 +721,8 @@ func renderStats(games []model.Game, owner string, tw int) string {
 		b.WriteString("\n  " + gradient("CLOSEST TO 100%") + "\n")
 		for _, g := range near[:min(5, len(near))] {
 			left := g.Total - g.Achieved
-			b.WriteString("  " + paint(active.Text, padRight(Truncate(g.Name, 34), 34)) + "  " + Bar(g.Percent, 20) + "  " +
+			nameW := min(34, max(tw-40, 12))
+			b.WriteString("  " + paint(active.Text, padRight(Truncate(g.Name, nameW), nameW)) + "  " + Bar(g.Percent, 20) + "  " +
 				bold(pctColor(g.Percent), padLeft(fmt.Sprintf("%.0f%%", math.Floor(g.Percent)), 4)) + "  " +
 				paint(active.Dim, fmt.Sprintf("%d left", left)) + "\n")
 		}

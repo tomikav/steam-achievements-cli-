@@ -162,10 +162,7 @@ func (b *browser) buildHome(f *frame) {
 	top := b.homeCardsTop()
 
 	if top > 4 {
-		banner := strings.Split(strings.TrimRight(Banner(), "\n"), "\n")
-		if len(banner) > 0 && banner[0] == "" {
-			banner = banner[1:]
-		}
+		banner := animatedBanner()
 		// banner from row 2 (one blank row of margin), indented like the cards
 		for i := 0; i < 8 && i < len(banner); i++ {
 			f.put(2+i, homeMargin-2, banner[i])
@@ -184,7 +181,7 @@ func (b *browser) buildHome(f *frame) {
 		case b.friends.err != nil:
 			online = paint(active.Faint, "●") + "  " + paint(active.Dim, "friends list is private")
 		default:
-			online = paint(active.Dim, spinnerFrames[b.frameN%len(spinnerFrames)]+"  checking friends")
+			online = paint(active.Dim, b.spin()+"  checking friends")
 		}
 		stat := func(v, label string) string { return bold(active.Text, v) + " " + paint(active.Dim, label) }
 		gap := "     "
@@ -192,13 +189,16 @@ func (b *browser) buildHome(f *frame) {
 		activity := paint(active.Dim, "activity map fills in after the next refresh")
 		if !act.Empty() {
 			cur, _ := act.Streaks()
-			activity = stat(fmt.Sprint(act.Since(30)), "unlocked this month") + gap + stat(fmt.Sprint(cur), plural(cur, "day", "days")+" streak")
+			activity = stat(fmt.Sprint(countUp(act.Since(30))), "unlocked this month") + gap + stat(fmt.Sprint(countUp(cur)), plural(cur, "day", "days")+" streak")
+			if b.w >= homeMargin+46+8+width(activity)+34+homeMargin {
+				activity += gap + sparkline(act.Daily(28), active.From, active.To)
+			}
 		}
 		greet := []string{
 			paint(active.Dim, "welcome back,"),
 			gradient(who),
-			stat(fmt.Sprint(len(b.games)), "games") + gap + stat(fmt.Sprint(s.tracked), "with achievements"),
-			stat(fmt.Sprint(s.perfect), "perfect") + gap + stat(fmt.Sprintf("%.1f%%", s.average), "average") + gap + stat(formatPlaytime(s.playtime), "played"),
+			stat(fmt.Sprint(countUp(len(b.games))), "games") + gap + stat(fmt.Sprint(countUp(s.tracked)), "with achievements"),
+			stat(fmt.Sprint(countUp(s.perfect)), "perfect") + gap + stat(fmt.Sprintf("%.1f%%", s.average*animT), "average") + gap + stat(formatPlaytime(countUp(s.playtime)), "played"),
 			activity,
 			online,
 			"",
@@ -284,7 +284,7 @@ func (b *browser) buildHomeCard(f *frame, card, x, top, w, per int) {
 	message := func(msgs ...string) {
 		for r := 1; r < rows; r++ {
 			if r-1 < len(msgs) {
-				put(r, paint(active.Dim, msgs[r-1]))
+				put(r, paint(active.Dim, Truncate(msgs[r-1], inner)))
 			} else {
 				put(r, "")
 			}
@@ -340,7 +340,7 @@ func (b *browser) buildHomeCard(f *frame, card, x, top, w, per int) {
 			}
 			marker := "    "
 			if sel {
-				marker = paint(active.Accent, "▌") + "   "
+				marker = paint(pulse(active.Accent, active.To), "▌") + "   "
 			}
 			put(base+1, marker+detail)
 			for k := 2; k < b.entryRows(); k++ {
@@ -353,7 +353,7 @@ func (b *browser) buildHomeCard(f *frame, card, x, top, w, per int) {
 		case b.friends.err != nil:
 			message("Friends list is private.", "", "Set it to Public in Steam's", "privacy settings to see it.")
 		case !b.friends.loaded:
-			message(spinnerFrames[b.frameN%len(spinnerFrames)] + "  loading friends...")
+			message(b.spin() + "  loading friends...")
 		case len(fr) == 0:
 			message("Nobody online right now.")
 		default:
@@ -372,11 +372,11 @@ func (b *browser) buildHomeCard(f *frame, card, x, top, w, per int) {
 				iconRow(base, "f"+x.SteamID, name)
 				detail := friendState(x)
 				if x.Game != "" {
-					detail = paint(active.Accent, "●") + "  " + bold(active.Text, Truncate(x.Game, max(inner-8, 4)))
+					detail = paint(pulse(active.Accent, active.Faint), "●") + "  " + bold(active.Text, Truncate(x.Game, max(inner-8, 4)))
 				}
 				marker := "    "
 				if sel {
-					marker = paint(active.Accent, "▌") + "   "
+					marker = paint(pulse(active.Accent, active.To), "▌") + "   "
 				}
 				put(base+1, marker+detail)
 				for k := 2; k < b.entryRows(); k++ {
@@ -398,7 +398,7 @@ func (b *browser) perfLine() string {
 	case p.confirm:
 		return chip(active.Bad, active.Ink, "PRESS X AGAIN TO CLOSE STEAM") + "  " + paint(active.Dim, "games still launch from here")
 	case p.closing:
-		return paint(active.Accent, spinnerFrames[b.frameN%len(spinnerFrames)]) + paint(active.Dim, "  closing the Steam client...")
+		return paint(active.Accent, b.spin()) + paint(active.Dim, "  closing the Steam client...")
 	case !p.known:
 		return cli
 	case p.steam == 0:

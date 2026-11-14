@@ -217,7 +217,7 @@ func (b *browser) buildPlay(f *frame) {
 	case p.running:
 		right = chip(active.Good, active.Ink, "RUNNING") + " " + bold(active.Text, clock(time.Since(p.startedAt)))
 	case p.launching:
-		right = chip(active.Warn, active.Ink, "STARTING") + " " + paint(active.Dim, spinnerFrames[b.frameN%len(spinnerFrames)])
+		right = chip(active.Warn, active.Ink, "STARTING") + " " + paint(active.Dim, b.spin())
 	default:
 		right = chip(lerp(active.Faint, active.Dim, 0.5), active.Text, "NOT RUNNING")
 	}
@@ -300,7 +300,7 @@ func (b *browser) buildPlayInfo(f *frame, top, h, w int) {
 	case p.storeErr != nil:
 		lines = append(lines, paint(active.Dim, "Store details unavailable: "+p.storeErr.Error()))
 	default:
-		lines = append(lines, paint(active.Accent, spinnerFrames[b.frameN%len(spinnerFrames)])+" "+paint(active.Dim, "Loading store details..."))
+		lines = append(lines, paint(active.Accent, b.spin())+" "+paint(active.Dim, "Loading store details..."))
 	}
 	if p.steamKnown {
 		if p.steamOn {
@@ -389,7 +389,7 @@ func (b *browser) buildPlayAchievements(f *frame, x, w, top, h int) {
 		for r := 0; r < L; r++ {
 			t := ""
 			if r == L/2 {
-				t = paint(active.Accent, spinnerFrames[b.frameN%len(spinnerFrames)]) + " " + paint(active.Text, "Loading achievements...")
+				t = paint(active.Accent, b.spin()) + " " + paint(active.Text, "Loading achievements...")
 			}
 			line(top+2+r, t)
 		}

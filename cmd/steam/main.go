@@ -283,7 +283,7 @@ flags:
   --no-cache     re-fetch achievement counts even if cached
   --demo         fictional data, no API key needed
   --no-icons     do not draw game icons (Sixel terminals only)
-  --theme NAME   steam (default), hacker, gamer, synthwave, sunset, frost, mono
+  --theme NAME   steam (default), aurora, hacker, gamer, synthwave, sunset, frost, mono
 `
 
 // --- loading the library ----------------------------------------------------------
@@ -608,10 +608,11 @@ func runBrowse(args []string) {
 
 	lib := loadLibrary(o)
 	opt := ui.BrowseOptions{
-		Owner: lib.owner,
-		Games: lib.games,
-		Demo:  o.demo,
-		Icons: !o.noIcons && !o.demo && icons.Supported(),
+		Owner:    lib.owner,
+		Games:    lib.games,
+		Demo:     o.demo,
+		Icons:    !o.noIcons && !o.demo && icons.Supported(),
+		NoMotion: os.Getenv("STEAM_NO_MOTION") != "",
 	}
 	if o.demo {
 		opt.LoadAchievements = func(appID int) ([]model.Achievement, error) {
@@ -1053,7 +1054,7 @@ func usage(w io.Writer, code int) {
 		{"--no-cache", "ignore the local cache"},
 		{"--no-icons", "do not draw game icons"},
 		{"--demo", "fictional data, no API key needed"},
-		{"--theme NAME", "steam (default), hacker, gamer, synthwave, sunset, frost, mono"},
+		{"--theme NAME", "steam (default), aurora, hacker, gamer, synthwave, sunset, frost, mono"},
 	}, 24)
 	section("EXAMPLES", [][2]string{
 		{"steam list --min 80 --sort playtime", ""},
