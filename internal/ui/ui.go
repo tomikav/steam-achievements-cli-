@@ -93,26 +93,100 @@ func ActiveThemeName() string { return active.Name }
 
 func fg(c string) lipgloss.Style { return lipgloss.NewStyle().Foreground(lipgloss.Color(c)) }
 
-func paint(c, s string) string { return fg(c).Render(s) }
+// Styling is the hottest path of every frame. lipgloss is asked once per
+// colour for its escape codes (so the terminal's colour profile is still
+// respected), and then text is wrapped with them directly.
+type codes struct {
+	pre, post string
+	direct    bool // lipgloss output could not be split: always render
+}
 
-func bold(c, s string) string { return fg(c).Bold(true).Render(s) }
+var (
+	codesMu    sync.RWMutex
+	codesCache = map[string]codes{}
+)
+
+const sentinel = "q"
+
+func styleCodes(key string, st func() lipgloss.Style) codes {
+	codesMu.RLock()
+	c, ok := codesCache[key]
+	codesMu.RUnlock()
+	if ok {
+		return c
+	}
+	out := st().Render(sentinel)
+	if i := strings.Index(out, sentinel); i >= 0 && strings.Count(out, sentinel) == 1 {
+		c = codes{pre: out[:i], post: out[i+len(sentinel):]}
+	} else {
+		c.direct = true
+	}
+	codesMu.Lock()
+	codesCache[key] = c
+	codesMu.Unlock()
+	return c
+}
+
+func styled(key string, st func() lipgloss.Style, s string) string {
+	if s == "" {
+		return ""
+	}
+	if strings.ContainsAny(s, "\n\t") { // lipgloss handles these per line
+		return st().Render(s)
+	}
+	c := styleCodes(key, st)
+	if c.direct {
+		return st().Render(s)
+	}
+	return c.pre + s + c.post
+}
+
+func paint(c, s string) string {
+	return styled(c, func() lipgloss.Style { return fg(c) }, s)
+}
+
+func bold(c, s string) string {
+	return styled("b"+c, func() lipgloss.Style { return fg(c).Bold(true) }, s)
+}
 
 // chip renders s as a coloured label with padding.
 func chip(bg, ink, s string) string {
-	return lipgloss.NewStyle().Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(ink)).Bold(true).Render(" " + s + " ")
+	return styled("c"+bg+ink, func() lipgloss.Style {
+		return lipgloss.NewStyle().Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(ink)).Bold(true)
+	}, " "+s+" ")
 }
 
 type rgb struct{ r, g, b float64 }
 
+func nibble(c byte) int {
+	switch {
+	case c >= '0' && c <= '9':
+		return int(c - '0')
+	case c >= 'a' && c <= 'f':
+		return int(c-'a') + 10
+	case c >= 'A' && c <= 'F':
+		return int(c-'A') + 10
+	}
+	return 0
+}
+
 func parseHex(h string) rgb {
-	var r, g, b int
-	fmt.Sscanf(strings.TrimPrefix(h, "#"), "%02x%02x%02x", &r, &g, &b)
-	return rgb{float64(r), float64(g), float64(b)}
+	h = strings.TrimPrefix(h, "#")
+	if len(h) < 6 {
+		return rgb{}
+	}
+	v := func(i int) float64 { return float64(nibble(h[i])<<4 | nibble(h[i+1])) }
+	return rgb{v(0), v(2), v(4)}
 }
 
 func (c rgb) hex() string {
+	const digits = "0123456789abcdef"
 	cl := func(v float64) int { return int(math.Max(0, math.Min(255, math.Round(v)))) }
-	return fmt.Sprintf("#%02x%02x%02x", cl(c.r), cl(c.g), cl(c.b))
+	b := [7]byte{'#'}
+	for i, v := range []int{cl(c.r), cl(c.g), cl(c.b)} {
+		b[1+2*i], b[2+2*i] = digits[v>>4], digits[v&15]
+	}
+	return string(b[:])
 }
 
 func lerp(a, b string, t float64) string {
@@ -142,14 +216,26 @@ func gradientBetween(s, from, to string) string {
 		if n > 1 {
 			t = float64(i) / float64(n-1)
 		}
-		b.WriteString(fg(lerp(from, to, t)).Bold(true).Render(string(r)))
+		b.WriteString(bold(lerp(from, to, t), string(r)))
 		i++
 	}
 	return b.String()
 }
 
 // width is the printed width of s, ignoring escape codes.
-func width(s string) int { return lipgloss.Width(s) }
+func width(s string) int {
+	ascii := true
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c == 0x1b || c >= 0x80 {
+			ascii = false
+			break
+		}
+	}
+	if ascii {
+		return len(s)
+	}
+	return runewidth.StringWidth(stripANSI(s))
+}
 
 func padRight(s string, w int) string {
 	if d := w - width(s); d > 0 {

@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tomikav/steam-achievements-cli-/internal/model"
@@ -16,8 +17,34 @@ type Activity struct {
 
 func dayKey(t time.Time) string { return t.Format("2006-01-02") }
 
-// NewActivity collects every unlock time of every game.
+var (
+	actMu   sync.Mutex
+	actKey  [3]int
+	actLast Activity
+)
+
+// NewActivity collects every unlock time of every game. The last result is
+// kept: frames ask for it many times a second and the library rarely
+// changes in between.
 func NewActivity(games []model.Game) Activity {
+	key := [3]int{len(games), 0, time.Now().YearDay()}
+	for _, g := range games {
+		key[1] += len(g.Unlocks)
+		if len(g.Unlocks) > 0 {
+			key[1] += int(g.Unlocks[len(g.Unlocks)-1] % 9973)
+		}
+	}
+	actMu.Lock()
+	defer actMu.Unlock()
+	if key == actKey && actLast.byDay != nil {
+		actLast.now = time.Now()
+		return actLast
+	}
+	actKey, actLast = key, newActivity(games)
+	return actLast
+}
+
+func newActivity(games []model.Game) Activity {
 	a := Activity{byDay: map[string]int{}, now: time.Now()}
 	for _, g := range games {
 		for _, u := range g.Unlocks {

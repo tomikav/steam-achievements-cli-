@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -52,6 +53,11 @@ func (c *blobCache) put(key string, v any) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.m[key] = cache.Blob{At: time.Now().Unix(), Data: data}
+	for k, b := range c.m { // drop expired entries so the file stays small
+		if time.Since(time.Unix(b.At, 0)) > c.ttl {
+			delete(c.m, k)
+		}
+	}
 	cache.SaveBlobs(c.name, c.m)
 }
 
@@ -251,4 +257,193 @@ func runPlay(args []string) {
 	}
 	ui.Ok("Launching " + game.Name)
 	ui.Hint("Steam starts hidden in the tray if it was closed.")
+}
+
+// --- store, profile, wrapped ------------------------------------------------
+
+func wireStore(opt *ui.BrowseOptions, lib library, isDemo bool) {
+	cart := openBlobs("cart", 100*365*24*time.Hour)
+	if isDemo {
+		opt.LoadStoreFront = func() (map[string][]model.StoreItem, error) { return demo.StoreFront(), nil }
+		opt.SearchStore = func(t string) ([]model.StoreItem, error) { return demo.StoreSearch(t), nil }
+		opt.LoadStore = func(id int) (model.StoreInfo, error) { return demo.StoreDetail(id), nil }
+		opt.LoadProfile = func() (model.Profile, error) { return demo.Profile(), nil }
+		var mem []model.CartItem
+		opt.LoadCart = func() []model.CartItem { return mem }
+		opt.SaveCart = func(c []model.CartItem) { mem = c }
+	} else {
+		// Store lists, store pages and the profile are cached on disk so
+		// the views open instantly; they refresh after a short while.
+		front := openBlobs("storefront", 30*time.Minute)
+		pages := openBlobs("storepages", 72*time.Hour)
+		prof := openBlobs("profile", 10*time.Minute)
+		opt.LoadStoreFront = func() (map[string][]model.StoreItem, error) {
+			var m map[string][]model.StoreItem
+			if front.get("v1", &m) && len(m) > 0 {
+				return m, nil
+			}
+			m, err := api.StoreFront()
+			if err == nil {
+				front.put("v1", m)
+			}
+			return m, err
+		}
+		opt.LoadStore = func(id int) (model.StoreInfo, error) {
+			var info model.StoreInfo
+			key := strconv.Itoa(id)
+			if pages.get(key, &info) && info.Name != "" {
+				return info, nil
+			}
+			info, err := api.StoreDetails(id)
+			if err == nil {
+				pages.put(key, info)
+			}
+			return info, err
+		}
+		opt.SearchStore = api.StoreSearch
+		opt.LoadProfile = func() (model.Profile, error) {
+			var p model.Profile
+			if prof.get(lib.client.SteamID, &p) && p.Persona != "" {
+				return p, nil
+			}
+			p, err := lib.client.Profile()
+			if err == nil {
+				prof.put(lib.client.SteamID, p)
+			}
+			return p, err
+		}
+		opt.BuyInSteam = launcher.StorePage
+		opt.InstallApp = launcher.InstallApp
+		opt.LoadCart = func() []model.CartItem {
+			var c []model.CartItem
+			cart.get("items", &c)
+			return c
+		}
+		opt.SaveCart = func(c []model.CartItem) { cart.put("items", c) }
+	}
+	if isDemo {
+		opt.LoadVersus = func(f model.Friend) (ui.Versus, error) { return demoVersus(lib.games, f), nil }
+	} else {
+		opt.LoadVersus = func(f model.Friend) (ui.Versus, error) { return compare(lib, f) }
+	}
+	opt.ExportWrapped = func(svg string) (string, error) {
+		dir, err := os.UserHomeDir()
+		if err != nil {
+			dir = "."
+		}
+		if d := filepath.Join(dir, "Desktop"); dirExists(d) {
+			dir = d
+		}
+		path := filepath.Join(dir, fmt.Sprintf("steam-wrapped-%d.svg", time.Now().Year()))
+		return path, os.WriteFile(path, []byte(svg), 0o644)
+	}
+}
+
+func dirExists(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && st.IsDir()
+}
+
+// runStore opens the interactive store, searching right away when a name
+// is given.
+func runStore(args []string) {
+	pos, flagArgs := splitPositional(args)
+	runBrowseAt(flagArgs, "store", strings.Join(pos, " "))
+}
+
+// runWrapped shows the year: interactive slides in a terminal, a printed
+// summary otherwise, and an SVG share card with --svg.
+func runWrapped(args []string) {
+	fs := flag.NewFlagSet("wrapped", flag.ExitOnError)
+	isDemo := fs.Bool("demo", false, "fictional data")
+	svg := fs.String("svg", "", "save a 1200x630 share card to this file")
+	year := fs.Int("year", time.Now().Year(), "year to summarize")
+	fs.Usage = func() { fmt.Fprintln(os.Stderr, "usage: steam wrapped [--svg FILE] [--year N] [--demo]") }
+	_ = fs.Parse(args)
+	if *svg == "" && *year == time.Now().Year() && ui.IsTTY() {
+		rest := []string{}
+		if *isDemo {
+			rest = append(rest, "--demo")
+		}
+		runBrowseAt(rest, "wrapped", "")
+		return
+	}
+	lib := loadLibrary(&listOptions{format: "plain", demo: *isDemo})
+	w := ui.ComputeWrapped(lib.games, *year, nil)
+	fmt.Print(ui.RenderWrapped(w, lib.owner, ui.TermWidth()))
+	if *svg != "" {
+		if err := os.WriteFile(*svg, []byte(ui.WrappedSVG(w, lib.owner)), 0o644); err != nil {
+			ui.Errorf("could not save %s: %v", *svg, err)
+			os.Exit(1)
+		}
+		ui.Ok("Share card saved to " + *svg)
+	}
+}
+
+// compare builds the versus view: games both own, hours, and achievement
+// progress for the most played shared games.
+func compare(lib library, f model.Friend) (ui.Versus, error) {
+	fc := api.New(lib.client.Key, f.SteamID)
+	theirs, err := fc.OwnedGames()
+	if err != nil {
+		return ui.Versus{}, err
+	}
+	mine := map[int]model.Game{}
+	for _, g := range lib.games {
+		mine[g.AppID] = g
+	}
+	v := ui.Versus{TheirCount: len(theirs)}
+	for _, t := range theirs {
+		m, ok := mine[t.AppID]
+		if !ok {
+			continue
+		}
+		vg := ui.VersusGame{AppID: t.AppID, Name: m.Name, Mine: m.Playtime, Theirs: t.Playtime, MyPct: -1, TheirPct: -1}
+		if m.HasStats && m.Total > 0 {
+			vg.MyPct = float64(m.Achieved) / float64(m.Total) * 100
+		}
+		v.Games = append(v.Games, vg)
+	}
+	sort.SliceStable(v.Games, func(i, j int) bool {
+		return v.Games[i].Mine+v.Games[i].Theirs > v.Games[j].Mine+v.Games[j].Theirs
+	})
+	// their progress for the top shared games with achievements
+	var ids []int
+	idx := map[int]int{}
+	for i, g := range v.Games {
+		if g.MyPct >= 0 && len(ids) < 12 {
+			ids = append(ids, g.AppID)
+			idx[g.AppID] = i
+		}
+	}
+	var mu sync.Mutex
+	parallel(ids, 4, func(id int) {
+		a, t, err := fc.AchievementProgress(id)
+		if err != nil || t == 0 {
+			return
+		}
+		mu.Lock()
+		v.Games[idx[id]].TheirPct = float64(a) / float64(t) * 100
+		mu.Unlock()
+	})
+	return v, nil
+}
+
+func demoVersus(games []model.Game, f model.Friend) ui.Versus {
+	v := ui.Versus{TheirCount: 140}
+	for i, g := range games {
+		if i%3 == 2 {
+			continue
+		}
+		vg := ui.VersusGame{AppID: g.AppID, Name: g.Name, Mine: g.Playtime, Theirs: (g.Playtime*(7+i*5))%40000 + 600, MyPct: -1, TheirPct: -1}
+		if g.HasStats && g.Total > 0 {
+			vg.MyPct = float64(g.Achieved) / float64(g.Total) * 100
+			vg.TheirPct = float64((g.AppID*37 + len(f.Name)*11) % 100)
+		}
+		v.Games = append(v.Games, vg)
+	}
+	sort.SliceStable(v.Games, func(i, j int) bool {
+		return v.Games[i].Mine+v.Games[i].Theirs > v.Games[j].Mine+v.Games[j].Theirs
+	})
+	return v
 }

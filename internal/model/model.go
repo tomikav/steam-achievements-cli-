@@ -62,6 +62,18 @@ type StoreInfo struct {
 	Metacritic  int      `json:"metacritic,omitempty"`
 	HeaderImage string   `json:"header_image"`
 	Platforms   []string `json:"platforms"`
+	// Price and extras, for the store view.
+	Price          string   `json:"price,omitempty"`
+	Original       string   `json:"original,omitempty"`
+	Discount       int      `json:"discount,omitempty"`
+	Cents          int      `json:"cents,omitempty"`
+	Currency       string   `json:"currency,omitempty"`
+	Free           bool     `json:"free,omitempty"`
+	Reviews        int      `json:"reviews,omitempty"`
+	Achievements   int      `json:"achievements,omitempty"`
+	Categories     []string `json:"categories,omitempty"`
+	ComingSoon     bool     `json:"coming_soon,omitempty"`
+	ControllerSupp string   `json:"controller,omitempty"`
 }
 
 // Deal is a game with its current price, from the wishlist or the store's
@@ -86,4 +98,57 @@ type News struct {
 	Date    int64  `json:"date"`
 	Summary string `json:"summary"`
 	Feed    string `json:"feed"`
+}
+
+// StoreItem is one game in a store listing.
+type StoreItem struct {
+	AppID     int    `json:"appid"`
+	Name      string `json:"name"`
+	Discount  int    `json:"discount"`
+	Final     string `json:"final"`    // formatted price, "Free" for free games
+	Original  string `json:"original"` // formatted, only when discounted
+	Cents     int    `json:"cents"`    // final price in cents, for totals
+	Currency  string `json:"currency"`
+	Free      bool   `json:"free"`
+	Image     string `json:"image"`
+	Platforms string `json:"platforms"` // "wml" subset: windows, mac, linux
+	Metascore int    `json:"metascore,omitempty"`
+	Soon      bool   `json:"soon,omitempty"` // not released yet
+}
+
+// CartItem is a game the user keeps in the local cart, with the price it
+// had when it was added.
+type CartItem struct {
+	StoreItem
+	Added      int64 `json:"added"`
+	AddedCents int   `json:"added_cents"`
+}
+
+// RecentGame is a game played in the last two weeks.
+type RecentGame struct {
+	AppID    int    `json:"appid"`
+	Name     string `json:"name"`
+	TwoWeeks int    `json:"two_weeks"` // minutes
+	Forever  int    `json:"forever"`   // minutes
+	Icon     string `json:"icon,omitempty"`
+}
+
+// Profile is the public Steam profile of the user.
+type Profile struct {
+	SteamID     string       `json:"steamid"`
+	Persona     string       `json:"persona"`
+	RealName    string       `json:"real_name,omitempty"`
+	ProfileURL  string       `json:"profile_url"`
+	Avatar      string       `json:"avatar"` // full size
+	Country     string       `json:"country,omitempty"`
+	Created     int64        `json:"created,omitempty"`
+	State       int          `json:"state"`
+	Game        string       `json:"game,omitempty"`
+	LastLogoff  int64        `json:"last_logoff,omitempty"`
+	Level       int          `json:"level"`
+	XP          int          `json:"xp"`
+	XPToNext    int          `json:"xp_to_next"`
+	XPThisLevel int          `json:"xp_this_level"` // XP needed to reach the current level
+	Badges      int          `json:"badges"`
+	Recent      []RecentGame `json:"recent,omitempty"`
 }

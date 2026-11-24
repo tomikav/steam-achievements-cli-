@@ -39,12 +39,30 @@ func StoreDetails(appID int) (model.StoreInfo, error) {
 				Description string `json:"description"`
 			} `json:"genres"`
 			Release struct {
-				Date string `json:"date"`
+				Date       string `json:"date"`
+				ComingSoon bool   `json:"coming_soon"`
 			} `json:"release_date"`
 			Metacritic struct {
 				Score int `json:"score"`
 			} `json:"metacritic"`
 			Platforms map[string]bool `json:"platforms"`
+			IsFree    bool            `json:"is_free"`
+			Price     *struct {
+				Currency string `json:"currency"`
+				Initial  int    `json:"initial"`
+				Final    int    `json:"final"`
+				Discount int    `json:"discount_percent"`
+			} `json:"price_overview"`
+			Recommendations struct {
+				Total int `json:"total"`
+			} `json:"recommendations"`
+			Achievements struct {
+				Total int `json:"total"`
+			} `json:"achievements"`
+			Categories []struct {
+				Description string `json:"description"`
+			} `json:"categories"`
+			Controller string `json:"controller_support"`
 		} `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
@@ -63,6 +81,20 @@ func StoreDetails(appID int) (model.StoreInfo, error) {
 		Released:    d.Release.Date,
 		Metacritic:  d.Metacritic.Score,
 		HeaderImage: d.HeaderImage,
+	}
+	info.Free, info.Reviews, info.Achievements, info.ComingSoon, info.ControllerSupp =
+		d.IsFree, d.Recommendations.Total, d.Achievements.Total, d.Release.ComingSoon, d.Controller
+	switch {
+	case d.Price != nil:
+		info.Price, info.Cents, info.Currency, info.Discount = money(d.Price.Final, d.Price.Currency), d.Price.Final, d.Price.Currency, d.Price.Discount
+		if d.Price.Discount > 0 {
+			info.Original = money(d.Price.Initial, d.Price.Currency)
+		}
+	case d.IsFree:
+		info.Price = "Free"
+	}
+	for _, c := range d.Categories {
+		info.Categories = append(info.Categories, c.Description)
 	}
 	for _, g := range d.Genres {
 		info.Genres = append(info.Genres, g.Description)

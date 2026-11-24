@@ -56,6 +56,27 @@ type BrowseOptions struct {
 	Uninstall func(appID int) error
 	// NoMotion turns the animations off.
 	NoMotion bool
+	// LoadProfile returns the user's public profile.
+	LoadProfile func() (model.Profile, error)
+	// ExportWrapped saves the Wrapped share card and returns its path.
+	ExportWrapped func(svg string) (string, error)
+	// LoadStoreFront returns the store's featured lists by section.
+	LoadStoreFront func() (map[string][]model.StoreItem, error)
+	// SearchStore finds games in the store.
+	SearchStore func(term string) ([]model.StoreItem, error)
+	// LoadCart and SaveCart keep the local cart between runs.
+	LoadCart func() []model.CartItem
+	SaveCart func([]model.CartItem)
+	// BuyInSteam opens a game's store page in the Steam client.
+	BuyInSteam func(appID int) error
+	// InstallApp asks Steam to install a game.
+	InstallApp func(appID int) error
+	// LoadVersus compares the library with a friend's.
+	LoadVersus func(f model.Friend) (Versus, error)
+	// Start opens a view other than home: "store", "profile", "wrapped",
+	// "roulette". StoreQuery searches the store right away.
+	Start      string
+	StoreQuery string
 }
 
 // --- state --------------------------------------------------------------------
@@ -71,6 +92,11 @@ const (
 	modePlay
 	modeHome
 	modePanel
+	modeProfile
+	modeWrapped
+	modeRoulette
+	modeStore
+	modeVersus
 )
 
 var listTabs = []string{"ALL", "IN PROGRESS", "ALMOST", "PERFECT", "NOT STARTED", "NO ACHIEVEMENTS"}
@@ -149,6 +175,13 @@ type browser struct {
 	wantAvatars     bool
 	friends         friendsState
 	extra           extraState
+	profile         profileState
+	wrapped         wrappedState
+	roulette        rouletteState
+	store           storeState
+	palette         paletteState
+	versus          versusState
+	wantAvatarBig   bool
 	perf            perfState
 	wantAchIcons    bool
 	quit            bool
@@ -396,6 +429,18 @@ func (b *browser) refilterAch() {
 
 // handleKey applies one key and reports whether the screen changed.
 func (b *browser) handleKey(k string) {
+	if k == "ctrl+q" {
+		b.quit = true
+		return
+	}
+	if b.palette.open {
+		b.paletteKey(k)
+		return
+	}
+	if b.mode == modeStore && b.store.typing {
+		b.storeKey(k)
+		return
+	}
 	if b.search {
 		switch k {
 		case "enter", "down", "up":
@@ -430,6 +475,29 @@ func (b *browser) handleKey(k string) {
 	case "q", "ctrl+c":
 		b.quit = true
 		return
+	case "ctrl+k", ":":
+		b.openPalette()
+		return
+	case "m":
+		if b.mode != modeProfile {
+			b.openProfile()
+			return
+		}
+	case "s", "$":
+		switch b.mode {
+		case modeHome, modePanel, modeFriends, modeDashboard, modeProfile, modeRoulette, modeWrapped, modeHelp:
+			b.openStore()
+			return
+		}
+		if k == "$" && b.mode != modeStore {
+			b.openStore()
+			return
+		}
+	case "r":
+		if b.mode == modeHome {
+			b.openRoulette()
+			return
+		}
 	case "?":
 		if b.mode == modeHelp {
 			b.mode = b.prev
@@ -527,8 +595,25 @@ func (b *browser) handleKey(k string) {
 		b.homeKey(k)
 	case modePanel:
 		b.panelKey(k)
+	case modeProfile:
+		b.profileKey(k)
+	case modeWrapped:
+		b.wrappedKey(k)
+	case modeRoulette:
+		b.rouletteKey(k)
+	case modeStore:
+		b.storeKey(k)
+	case modeVersus:
+		b.versusKey(k)
 	default:
 		b.listKey(k)
+	}
+}
+
+// loadFriendsOnce starts loading the friends list if it never loaded.
+func (b *browser) loadFriendsOnce() {
+	if !b.friends.loaded && !b.friends.loading && b.opt.LoadFriends != nil {
+		b.friends.loading, b.wantFriends = true, true
 	}
 }
 
@@ -675,6 +760,11 @@ func (b *browser) friendsKey(k string) {
 		}
 	case "R":
 		fr.loading, b.wantFriends = true, true
+	case "v":
+		if fr.cursor < len(fr.list) {
+			b.openVersus(fr.list[fr.cursor])
+			return
+		}
 	}
 	b.clampFriends()
 }
@@ -847,10 +937,24 @@ func (b *browser) build() frame {
 		b.buildHome(&f)
 	case modePanel:
 		b.buildPanel(&f)
+	case modeProfile:
+		b.buildProfile(&f)
+	case modeWrapped:
+		b.buildWrapped(&f)
+	case modeRoulette:
+		b.buildRoulette(&f)
+	case modeStore:
+		b.buildStore(&f)
+	case modeVersus:
+		b.buildVersus(&f)
 	default:
 		b.buildList(&f)
 	}
 	b.buildFooter(&f)
+	if b.palette.open {
+		b.drawPalette(&f)
+	}
+	f.compose()
 	return f
 }
 
@@ -1440,7 +1544,8 @@ func (b *browser) buildFooter(f *frame) {
 	case modeGame:
 		hints = []hint{{"p", "play"}, {"←→", "filter"}, {"s", "sort"}, {"esc", "back"}, {"o", "open"}, {"q", "quit"}, {"t", "theme"}, {"↑↓", "move"}}
 	case modeHome:
-		hints = []hint{{"←→", "cards"}, {"↑↓", "move"}, {"enter", "open"}, {"p", "play"}, {"l", "library"}, {"f", "friends"}, {"?", "help"}, {"q", "quit"}}
+		hints = []hint{{"←→", "browse"}, {"↑↓", "shelves"}, {"enter", "open"}, {"p", "play"}, {"c", "today's challenge"}, {"ctrl+k", "search"},
+			{"s", "store"}, {"m", "profile"}, {"r", "surprise me"}, {"?", "help"}}
 	case modePlay:
 		hints = []hint{{"p", "play"}, {"c", "close game"}, {"↑↓", "achievements"}, {"←→", "filter"}, {"enter", "full list"}, {"r", "refresh"}, {"o", "store"}, {"f", "folder"}, {"esc", "back"}}
 	case modePanel:
@@ -1449,8 +1554,22 @@ func (b *browser) buildFooter(f *frame) {
 			hints = append(hints, hint{"u u", "uninstall"})
 		}
 		hints = append(hints, hint{"esc", "back"}, hint{"a w n u", "hunt deals news storage"}, hint{"q", "quit"})
+	case modeProfile:
+		hints = []hint{{"y", "your year"}, {"o", "open on Steam"}, {"s", "store"}, {"ctrl+k", "search everything"}, {"esc", "back"}, {"ctrl+q", "quit"}}
+	case modeWrapped:
+		hints = []hint{{"→ space", "next"}, {"←", "back"}, {"e", "save share card"}, {"esc", "close"}}
+	case modeRoulette:
+		hints = []hint{{"enter", "play this"}, {"r", "spin again"}, {"esc", "back"}, {"ctrl+q", "quit"}}
+	case modeStore:
+		if b.store.typing {
+			hints = []hint{{"type", "a game"}, {"enter", "search"}, {"esc", "cancel"}}
+		} else {
+			hints = []hint{{"←→", "tabs"}, {"/", "search"}, {"enter", "details"}, {"c", "cart"}, {"b", "buy in Steam"}, {"i", "install free"}, {"o", "web"}, {"esc", "back"}}
+		}
+	case modeVersus:
+		hints = []hint{{"↑↓", "move"}, {"enter", "open game"}, {"R", "reload"}, {"esc", "back"}}
 	case modeFriends:
-		hints = []hint{{"arrows", "move"}, {"enter", "open profile"}, {"R", "reload"}, {"esc", "back"}, {"q", "quit"}}
+		hints = []hint{{"arrows", "move"}, {"v", "compare with me"}, {"enter", "open profile"}, {"R", "reload"}, {"esc", "back"}, {"q", "quit"}}
 	case modeDashboard, modeHelp:
 		hints = []hint{{"↑↓", "scroll"}, {"esc", "back"}, {"t", "theme"}, {"q", "quit"}}
 	default:
@@ -1503,6 +1622,25 @@ func helpLines() []string {
 		k("o", "open the game's achievement page in your browser"),
 		k("f", "friends: who is online and what they are playing"),
 		k("d", "dashboard with library statistics"),
+		"",
+		sec("ANYWHERE"),
+		k("ctrl+k or :", "search everything: games, achievements, friends, store, actions"),
+		k("ctrl+q", "quit from any screen, even while typing"),
+		k("s", "store: featured, top sellers, new, search, cart"),
+		k("m", "your profile, with level, showcase and activity"),
+		k("y (in profile)", "your year on Steam, as slides; e saves a share card"),
+		k("r (on home)", "surprise me: a roulette picks what to play"),
+		k("c (on home)", "today's challenge: one achievement picked for the day"),
+		k("v (in friends)", "compare your library with a friend"),
+		k("↑ on the first shelf", "reach the top bar: home, library, store, friends, profile"),
+		"",
+		sec("STORE"),
+		k("left / right, 1 - 6", "specials, top sellers, new, coming soon, search, cart"),
+		k("/", "search the store"),
+		k("c / x", "add to / remove from your local cart"),
+		k("b", "open the game in Steam to buy it (payment happens in Steam)"),
+		k("i", "install a free game"),
+		k("enter", "full details, or the game view if you own it"),
 		"",
 		sec("MORE THAN THE STEAM CLIENT"),
 		k("a", "hunt: easiest locked achievements of the library"),
@@ -1610,6 +1748,14 @@ func parseInput(buf []byte) ([]keyEvent, int) {
 			out = append(out, keyEvent{key: "ctrl+d"})
 		case 0x15:
 			out = append(out, keyEvent{key: "ctrl+u"})
+		case 0x11:
+			out = append(out, keyEvent{key: "ctrl+q"})
+		case 0x0b:
+			out = append(out, keyEvent{key: "ctrl+k"})
+		case 0x0e:
+			out = append(out, keyEvent{key: "ctrl+n"})
+		case 0x10:
+			out = append(out, keyEvent{key: "ctrl+p"})
 		case ' ':
 			out = append(out, keyEvent{key: "space"})
 		default:
@@ -1821,6 +1967,7 @@ func Browse(opt BrowseOptions) error {
 	out.WriteString("\x1b[?1049h\x1b[?25l\x1b[?1000h\x1b[?1006h\x1b[16t")
 
 	b := newBrowser(opt, w, h)
+	b.applyStart()
 	scr := &screen{out: out, drawn: map[[2]int]string{}}
 
 	keys := make(chan keyEvent, 64)
@@ -1970,6 +2117,9 @@ func Browse(opt BrowseOptions) error {
 			go loadIcons(avatarRequests(b.friends.list, b.smallPx(), b.bigPx()), events, b.small, b.smallPx())
 		}
 		b.extraIO(events)
+		b.profileIO(events)
+		b.storeIO(events)
+		b.versusIO(events)
 		if b.wantAchIcons && b.icons {
 			b.wantAchIcons = false
 			go loadIcons(achIconRequests(b.ach.appID, b.ach.list, b.smallPx()), events, b.small, b.smallPx())
@@ -2018,6 +2168,9 @@ func Browse(opt BrowseOptions) error {
 				b.w, b.h = nw, nh
 				b.clamp()
 				b.full = true
+				dirty = true
+			}
+			if b.liveFrame() {
 				dirty = true
 			}
 			if b.animating() || b.motion && (b.mode == modeHome || b.mode == modePanel) || b.motion && strings.HasPrefix(b.status, "ACHIEVEMENT") {
@@ -2161,5 +2314,26 @@ func loadIcons(reqs []icons.Request, events chan<- func(), dst map[string]string
 				dst[k] = v
 			}
 		}
+	}
+}
+
+// applyStart opens the view asked for on the command line.
+func (b *browser) applyStart() {
+	switch b.opt.Start {
+	case "store":
+		b.openStore()
+		if b.opt.StoreQuery != "" {
+			b.storeSearch(b.opt.StoreQuery)
+		}
+		b.store.back = modeHome
+	case "profile":
+		b.openProfile()
+		b.profile.back = modeHome
+	case "wrapped":
+		b.openWrapped()
+		b.wrapped.back = modeHome
+	case "roulette":
+		b.openRoulette()
+		b.roulette.back = modeHome
 	}
 }

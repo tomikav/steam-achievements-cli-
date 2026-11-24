@@ -169,3 +169,20 @@ func FormatSize(b int64) string {
 	}
 	return "-"
 }
+
+// StorePage opens a game's store page inside the Steam client, where it can
+// be bought or wishlisted. Without Steam it opens the web store instead.
+func StorePage(appID int) error {
+	if steamRoot() != "" {
+		return Open(fmt.Sprintf("steam://store/%d", appID))
+	}
+	return Open(fmt.Sprintf("https://store.steampowered.com/app/%d", appID))
+}
+
+// InstallApp asks Steam to install a game the user owns or that is free.
+func InstallApp(appID int) error {
+	if steamRoot() == "" {
+		return fmt.Errorf("Steam is not installed")
+	}
+	return Open(fmt.Sprintf("steam://install/%d", appID))
+}

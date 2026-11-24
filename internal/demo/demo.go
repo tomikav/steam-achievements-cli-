@@ -4,6 +4,7 @@ package demo
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tomikav/steam-achievements-cli-/internal/model"
@@ -68,7 +69,12 @@ func Games() []model.Game {
 			if rnd(3) == 0 {
 				days = rnd(60)
 			}
-			g.Unlocks = append(g.Unlocks, now.AddDate(0, 0, -days).Unix())
+			hour := []int{21, 22, 23, 0, 1, 2, 19, 20, 14, 10}[rnd(10)]
+			t := time.Date(now.Year(), now.Month(), now.Day(), hour, rnd(60), 0, 0, time.Local).AddDate(0, 0, -days)
+			if t.After(now) {
+				t = t.AddDate(0, 0, -1)
+			}
+			g.Unlocks = append(g.Unlocks, t.Unix())
 		}
 		for _, a := range Achievements(*g) {
 			if !a.Achieved {
@@ -201,4 +207,82 @@ func Store(appID int) model.StoreInfo {
 		}
 	}
 	return model.StoreInfo{}
+}
+
+// storeCatalog is a fictional store.
+var storeCatalog = []model.StoreItem{
+	{AppID: 501, Name: "Lanternfall", Discount: 60, Cents: 799, Final: "$7.99", Original: "$19.99", Platforms: "wl", Metascore: 88},
+	{AppID: 502, Name: "Orbital Bakery", Discount: 35, Cents: 1299, Final: "$12.99", Original: "$19.99", Platforms: "wml"},
+	{AppID: 503, Name: "Ghost Line Express", Discount: 80, Cents: 399, Final: "$3.99", Original: "$19.99", Platforms: "w"},
+	{AppID: 504, Name: "Kingdom of Moss", Discount: 50, Cents: 1499, Final: "$14.99", Original: "$29.99", Platforms: "wm", Metascore: 91},
+	{AppID: 505, Name: "Rust & Rhyme", Cents: 2499, Final: "$24.99", Platforms: "wl"},
+	{AppID: 506, Name: "Deep Signal", Cents: 2999, Final: "$29.99", Platforms: "w", Metascore: 84},
+	{AppID: 507, Name: "Starling Tactics", Cents: 3999, Final: "$39.99", Platforms: "w"},
+	{AppID: 508, Name: "Arena of Echoes", Free: true, Final: "Free", Platforms: "wl"},
+	{AppID: 509, Name: "Paper Pilots", Cents: 999, Final: "$9.99", Platforms: "wml"},
+	{AppID: 510, Name: "Night Market 1999", Cents: 1999, Final: "$19.99", Platforms: "w"},
+	{AppID: 511, Name: "Hollow Lantern II", Soon: true, Platforms: "w"},
+	{AppID: 512, Name: "Tidewalkers", Soon: true, Platforms: "wl"},
+	{AppID: 513, Name: "Copper Crown", Soon: true, Platforms: "w"},
+}
+
+// StoreFront returns fictional featured lists.
+func StoreFront() map[string][]model.StoreItem {
+	c := storeCatalog
+	return map[string][]model.StoreItem{
+		"specials":     {c[0], c[1], c[2], c[3]},
+		"top_sellers":  {c[3], c[5], c[7], c[4], c[0], c[6]},
+		"new_releases": {c[8], c[9], c[4], c[7]},
+		"coming_soon":  {c[10], c[11], c[12]},
+	}
+}
+
+// StoreSearch searches the fictional store and the demo library.
+func StoreSearch(term string) []model.StoreItem {
+	var out []model.StoreItem
+	t := strings.ToLower(term)
+	for _, it := range storeCatalog {
+		if strings.Contains(strings.ToLower(it.Name), t) {
+			out = append(out, it)
+		}
+	}
+	for _, g := range Games() {
+		if strings.Contains(strings.ToLower(g.Name), t) {
+			out = append(out, model.StoreItem{AppID: g.AppID, Name: g.Name, Cents: 1499, Final: "$14.99", Platforms: "w"})
+		}
+	}
+	return out
+}
+
+// StoreDetail returns fictional details for any demo game or store item.
+func StoreDetail(appID int) model.StoreInfo {
+	if info := Store(appID); info.Name != "" {
+		return info
+	}
+	for _, it := range storeCatalog {
+		if it.AppID == appID {
+			return model.StoreInfo{
+				Name:        it.Name,
+				Description: "A fictional game in the demo store. The real store shows the description, header art, price in your region, reviews and features of every game.",
+				Developers:  []string{"Demo Studio"}, Genres: []string{"Adventure", "Indie"},
+				Released: "Coming soon", Price: it.Final, Original: it.Original, Discount: it.Discount, Free: it.Free,
+				Reviews: 1200 + appID*37, Achievements: 20 + appID%30, Platforms: []string{"windows"}, ControllerSupp: "full",
+			}
+		}
+	}
+	return model.StoreInfo{}
+}
+
+// Profile returns a fictional profile.
+func Profile() model.Profile {
+	now := time.Now()
+	return model.Profile{
+		SteamID: "76561190000000000", Persona: "demo player", RealName: "Demo", Country: "CO",
+		Created: now.AddDate(-9, -3, 0).Unix(), State: 1, Level: 47, XP: 12650, XPToNext: 350, XPThisLevel: 12300, Badges: 58,
+		Recent: []model.RecentGame{
+			{AppID: 107, Name: "Tower of Regret", TwoWeeks: 1260, Forever: 30480},
+			{AppID: 101, Name: "Neon Overdrive", TwoWeeks: 540, Forever: 41220},
+			{AppID: 110, Name: "Void Cartographer", TwoWeeks: 300, Forever: 27780},
+		},
+	}
 }

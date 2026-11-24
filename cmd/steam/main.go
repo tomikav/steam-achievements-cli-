@@ -104,7 +104,7 @@ func main() {
 	cmd := "list"
 	// Bare `steam` in an interactive terminal opens the browser; with flags
 	// or when piped it keeps the classic table.
-	if len(args) == 0 && ui.IsTTY() && term.IsTerminal(os.Stdin.Fd()) {
+	if ui.IsTTY() && term.IsTerminal(os.Stdin.Fd()) && (len(args) == 0 || len(args) == 1 && args[0] == "--demo") {
 		cmd = "browse"
 	}
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -122,6 +122,14 @@ func main() {
 		runGame(args)
 	case "play":
 		runPlay(args)
+	case "store", "shop":
+		runStore(args)
+	case "profile", "me":
+		runBrowseAt(args, "profile", "")
+	case "wrapped", "year":
+		runWrapped(args)
+	case "surprise", "roll":
+		runBrowseAt(args, "roulette", "")
 	case "stats":
 		runStats(args)
 	case "doctor":
@@ -596,7 +604,9 @@ func printPlain(games []model.Game) {
 
 // --- steam browse ---------------------------------------------------------------------------
 
-func runBrowse(args []string) {
+func runBrowse(args []string) { runBrowseAt(args, "", "") }
+
+func runBrowseAt(args []string, start, query string) {
 	defer flushWarnings()
 	o := &listOptions{format: "pretty"}
 	fs := flag.NewFlagSet("browse", flag.ExitOnError)
@@ -608,11 +618,13 @@ func runBrowse(args []string) {
 
 	lib := loadLibrary(o)
 	opt := ui.BrowseOptions{
-		Owner:    lib.owner,
-		Games:    lib.games,
-		Demo:     o.demo,
-		Icons:    !o.noIcons && !o.demo && icons.Supported(),
-		NoMotion: os.Getenv("STEAM_NO_MOTION") != "",
+		Start:      start,
+		StoreQuery: query,
+		Owner:      lib.owner,
+		Games:      lib.games,
+		Demo:       o.demo,
+		Icons:      !o.noIcons && !o.demo && icons.Supported(),
+		NoMotion:   os.Getenv("STEAM_NO_MOTION") != "",
 	}
 	if o.demo {
 		opt.LoadAchievements = func(appID int) ([]model.Achievement, error) {
@@ -641,6 +653,7 @@ func runBrowse(args []string) {
 		}
 	}
 	wireExtras(&opt, lib, o.demo)
+	wireStore(&opt, lib, o.demo)
 	if err := ui.Browse(opt); err != nil {
 		ui.Errorf("%v", err)
 		ui.Fix("Use the table view instead: steam list")
@@ -1038,11 +1051,15 @@ func usage(w io.Writer, code int) {
 		{"steam perfect", "only 100% complete games"},
 		{"steam game <appid|name>", "achievement checklist for one game"},
 		{"steam play <appid|name>", "launch a game, Steam stays hidden"},
+		{"steam store [search]", "browse and search the Steam store"},
+		{"steam profile", "your profile, styled"},
+		{"steam wrapped [--svg FILE]", "your year on Steam, as slides or a share card"},
+		{"steam surprise", "a roulette picks what to play"},
 		{"steam stats", "library dashboard"},
 		{"steam doctor", "diagnose API key, SteamID and privacy settings"},
 		{"steam config", "show, set or clear credentials"},
 		{"steam version", "print the version"},
-	}, 24)
+	}, 28)
 	section("LIST FLAGS", [][2]string{
 		{"--min N", "minimum completion percent (default 50)"},
 		{"--max N", "maximum completion percent"},
@@ -1055,14 +1072,16 @@ func usage(w io.Writer, code int) {
 		{"--no-icons", "do not draw game icons"},
 		{"--demo", "fictional data, no API key needed"},
 		{"--theme NAME", "steam (default), aurora, hacker, gamer, synthwave, sunset, frost, mono"},
-	}, 24)
+	}, 28)
 	section("EXAMPLES", [][2]string{
 		{"steam list --min 80 --sort playtime", ""},
 		{"steam list --search knight --top 5", ""},
 		{"steam game 367520 --all", ""},
 		{"steam play deadlock", ""},
+		{"steam store hollow knight", ""},
+		{"steam wrapped --svg year.svg", ""},
 		{"steam --theme gamer stats", ""},
-	}, 24)
+	}, 28)
 	fmt.Fprintf(w, "  %s %s\n", ui.Dim("First run? Get a free API key at"), urlAPIKey)
 	fmt.Fprintf(w, "  %s %s\n\n", ui.Dim("Something wrong? Run"), "steam doctor")
 	os.Exit(code)

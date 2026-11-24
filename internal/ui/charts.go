@@ -130,8 +130,11 @@ func columns(vals []int, labels []string, h, cw int) []string {
 		if v > 0 {
 			n = fmt.Sprint(countUp(v))
 		}
-		nums.WriteString(paint(active.Text, padRight(Truncate(n, cw-1), cw)))
-		names.WriteString(paint(active.Dim, padRight(Truncate(labels[i], cw-1), cw)))
+		if cw < 4 { // too narrow for numbers
+			n = ""
+		}
+		nums.WriteString(paint(active.Text, padRight(cut(n, cw-1), cw)))
+		names.WriteString(paint(active.Dim, padRight(cut(labels[i], cw-1), cw)))
 	}
 	return append(rows, nums.String(), names.String())
 }
@@ -216,4 +219,13 @@ func playtimeChart(games []model.Game, n, barW int) []string {
 			paint(active.Dim, fmt.Sprintf("  %2.0f%%", float64(g.Playtime)/float64(max(total, 1))*100)))
 	}
 	return out
+}
+
+// cut shortens s to w columns without an ellipsis.
+func cut(s string, w int) string {
+	r := []rune(s)
+	for len(r) > 0 && width(string(r)) > w {
+		r = r[:len(r)-1]
+	}
+	return string(r)
 }

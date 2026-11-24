@@ -25,6 +25,12 @@ type fullSummary struct {
 	LastLogoff int64  `json:"lastlogoff"`
 	Avatar     string `json:"avatarmedium"`
 	ProfileURL string `json:"profileurl"`
+	// Only used by Profile.
+	AvatarMedium string `json:"-"`
+	AvatarFull   string `json:"avatarfull"`
+	RealName     string `json:"realname"`
+	Country      string `json:"loccountrycode"`
+	Created      int64  `json:"timecreated"`
 }
 
 // Friends returns the user's friends with their current status. Steam only

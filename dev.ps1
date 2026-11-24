@@ -24,7 +24,7 @@ if (-not $Quick) {
     Step 'vet'   { go vet -p 2 ./... }
     Step 'test'  { go test -p 2 ./... }
 }
-Step 'install' { go install -p 2 ./cmd/steam }
+Step 'install' { go install -p 2 -trimpath -ldflags '-s -w' ./cmd/steam }
 
 $bin = Join-Path (go env GOPATH) 'bin'
 if (($env:Path -split ';') -notcontains $bin) {

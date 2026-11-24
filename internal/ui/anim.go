@@ -39,6 +39,14 @@ func (b *browser) animKey() string {
 		k = append(k, b.play.appID)
 	case modeList:
 		k = append(k, b.tab)
+	case modeWrapped:
+		k = append(k, b.wrapped.slide)
+	case modeStore:
+		k = append(k, b.store.tab)
+	case modeHome:
+		if g, ok := b.homeFocus(); ok {
+			k = append(k, g.AppID)
+		}
 	}
 	var s strings.Builder
 	for _, n := range k {
@@ -165,4 +173,22 @@ func shimmer(s string) string {
 		sb.WriteString(bold(c, string(r)))
 	}
 	return sb.String()
+}
+
+// liveFrame reports whether the current screen changes on its own and must
+// be redrawn every tick (spinners, the roulette, the palette caret).
+func (b *browser) liveFrame() bool {
+	switch {
+	case b.palette.open && b.motion:
+		return true
+	case b.rouletteSpinning():
+		return true
+	case b.mode == modeStore && (b.store.loading || b.store.searching || b.store.detailBusy != 0 || b.store.typing):
+		return true
+	case b.mode == modeVersus && b.versus.loading:
+		return true
+	case (b.mode == modeProfile || b.mode == modeWrapped) && (b.profile.loading || b.profile.showcaseBusy):
+		return true
+	}
+	return false
 }

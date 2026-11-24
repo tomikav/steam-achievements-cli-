@@ -392,10 +392,10 @@ func TestHome(t *testing.T) {
 	if almost[0].Name != "Echo Knight" || len(almost) != 3 {
 		t.Fatalf("almost there: %v", almost)
 	}
-	b.handleKey("right")
+	b.handleKey("down")
 	b.handleKey("enter")
 	if b.mode != modePlay || b.play.appID != 5 {
-		t.Fatalf("enter on the almost card should open Echo Knight, got mode %v app %d", b.mode, b.play.appID)
+		t.Fatalf("enter on the almost shelf should open Echo Knight, got mode %v app %d", b.mode, b.play.appID)
 	}
 	b.handleKey("esc")
 	if b.mode != modeHome {
